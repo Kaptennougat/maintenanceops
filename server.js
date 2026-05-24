@@ -11,7 +11,7 @@ const { pool, initDB }              = require('./db');
 const { authMiddleware, managerOnly, SECRET } = require('./middleware/auth');
 
 const app  = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT;
 
 // ── VAPID ──────────────────────────────────────────────────────────────────────
 const VAPID_FILE = path.join(__dirname, 'data', 'vapid.json');
