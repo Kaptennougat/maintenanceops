@@ -1,7 +1,6 @@
 {
   "name": "maintenanceops-v2",
   "version": "2.0.0",
-  "description": "Suivi maintenance - Version complète",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,10 +11,9 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "cookie-parser": "^1.4.6",
-    "web-push": "^3.6.7",
-    "puppeteer-core": "^21.0.0",
-    "@sparticuz/chromium": "^119.0.0",
-    "multer": "^1.4.5-lts.1",
-    "dotenv": "^16.3.1"
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
