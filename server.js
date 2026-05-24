@@ -11,7 +11,6 @@ const { pool, initDB }              = require('./db');
 const { authMiddleware, managerOnly, SECRET } = require('./middleware/auth');
 
 const app  = express();
-const PORT = process.env.PORT;
 
 // ── VAPID ──────────────────────────────────────────────────────────────────────
 const VAPID_FILE = path.join(__dirname, 'data', 'vapid.json');
@@ -379,6 +378,7 @@ setTimeout(checkDeadlines, 5000);
 // DÉMARRAGE
 // ════════════════════════════════════════════════════════════════════════════════
 initDB().then(() => {
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  ✅  MaintenanceOps V2 en ligne sur le port ${PORT}\n`);
   });
