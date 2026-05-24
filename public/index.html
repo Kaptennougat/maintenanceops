@@ -194,13 +194,18 @@ tbody tr:hover td{background:var(--s2)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 @media(max-width:768px){
-  .sidebar{transform:translateX(-100%);transition:transform .25s}
+  .sidebar{transform:translateX(-100%);transition:transform .25s;z-index:100}
   .sidebar.open{transform:translateX(0)}
   .main{margin-left:0}
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .g4{grid-template-columns:1fr 1fr}
   .equip-list{grid-template-columns:1fr}
+  .hamburger{display:flex!important}
+  .overlay{display:block}
 }
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none}
+.overlay.show{display:block}
 </style>
 </head>
 <body>
@@ -271,9 +276,14 @@ tbody tr:hover td{background:var(--s2)}
   <!-- MAIN -->
   <div class="main">
     <div class="topbar">
-      <div>
-        <div class="page-title" id="page-title">Vue ensemble</div>
-        <div class="page-sub" id="page-sub"></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger" id="hamburger" onclick="openSidebar()" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div>
+          <div class="page-title" id="page-title">Vue ensemble</div>
+          <div class="page-sub" id="page-sub"></div>
+        </div>
       </div>
       <div class="topbar-right">
         <button class="btn btn-sm" onclick="refreshCurrent()">
@@ -533,6 +543,7 @@ tbody tr:hover td{background:var(--s2)}
   </div>
 </div>
 
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 <div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -1162,6 +1173,23 @@ setInterval(()=>{
   if(currentTab==='ensemble') loadEnsemble();
   if(currentTab==='affectations') updateBadge();
 },30000);
+
+// ── MOBILE SIDEBAR ────────────────────────────────────────────────────────────
+function openSidebar(){
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// Close sidebar when nav item clicked on mobile
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(window.innerWidth <= 768) closeSidebar();
+  });
+});
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 checkSession();
