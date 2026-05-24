@@ -11,7 +11,8 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "cookie-parser": "^1.4.6",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "dotenv": "^16.3.1"
   },
   "engines": {
     "node": ">=18.0.0"
