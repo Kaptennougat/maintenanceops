@@ -808,7 +808,7 @@ function renderAF(a){
   const dlDiff=a.deadline?Math.ceil((new Date(a.deadline)-new Date(TODAY))/86400000):null;
   const dlChip=!a.deadline?'<span class="dl dl-none">Pas de deadline</span>':
     dlDiff<0?`<span class="dl dl-late">⚠ Dépassé (${a.deadline})</span>`:
-    dlDiff===0?'<span class="dl dl-warn">⚡ Aujourd'hui</span>':
+    dlDiff===0?`<span class="dl dl-warn">⚡ Aujourd'hui</span>`:
     dlDiff<=3?`<span class="dl dl-warn">⏰ J-${dlDiff}</span>`:
     `<span class="dl dl-ok">✓ ${a.deadline}</span>`;
   const stClass=a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':a.statut==='Non réalisé'?'br':'bgr';
