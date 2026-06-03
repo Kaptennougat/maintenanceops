@@ -755,10 +755,12 @@ function renderCR(r){
   if(r.a_faire) h+=`<div class="info-row"><div class="info-lbl">📅 Prévu demain</div><div>${r.a_faire}</div></div>`;
   if(r.blocage) h+=`<div class="alert-s alert-r"><span>⛔</span><div><b>Blocage :</b> ${r.blocage}</div></div>`;
   if(r.besoin)  h+=`<div class="alert-s alert-o"><span>📦</span><div><b>Besoin :</b> ${r.besoin}</div></div>`;
-  if(r.commentaire) h+=`<div class="info-row"><div class="info-lbl">💬 Commentaire</div><div style="color:var(--text2)">${r.commentaire}</div></div>`;
-  // Show pannes
+  const commentDisplay = r.commentaire ? r.commentaire.split('\n__PANNES__:')[0] : '';
+  if(commentDisplay) h+=`<div class="info-row"><div class="info-lbl">💬 Commentaire</div><div style="color:var(--text2)">${commentDisplay}</div></div>`;
+  // Show pannes (stored in commentaire after __PANNES__:)
   try{
-    const pannes = JSON.parse(r.pannes||'[]');
+    const panneSep = (r.commentaire||'').indexOf('\n__PANNES__:');
+    const pannes = panneSep>=0 ? JSON.parse(r.commentaire.slice(panneSep+12)) : [];
     if(pannes.length){
       h+=`<div class="info-row"><div class="info-lbl">🔴 Pannes sur le périmètre</div>`;
       h+=pannes.map(p=>`
@@ -886,7 +888,13 @@ function loadCREdit(r){
   document.getElementById('cr-need').value     = r.besoin||'';
   document.getElementById('cr-block').value    = r.blocage||'';
   document.getElementById('cr-comment').value  = r.commentaire||'';
-  try{ loadPannes(JSON.parse(r.pannes||'[]')); }catch{ loadPannes([]); }
+  try{
+    const sep = (r.commentaire||'').indexOf('\n__PANNES__:');
+    const pArr = sep>=0 ? JSON.parse(r.commentaire.slice(sep+12)) : [];
+    loadPannes(pArr);
+    // Show commentaire without the pannes part
+    document.getElementById('cr-comment').value = sep>=0 ? r.commentaire.slice(0,sep) : (r.commentaire||'');
+  }catch{ loadPannes([]); }
   setCRType('jour');
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -895,6 +903,9 @@ async function saveCR(){
   const date=document.getElementById('cr-date').value;
   if(!date){toast('Date requise',false);return;}
   const pannes = getPannes();
+  // Encode pannes into commentaire to avoid schema dependency
+  const baseComment = document.getElementById('cr-comment').value.trim();
+  const pannesStr = pannes.length ? '\n__PANNES__:'+JSON.stringify(pannes) : '';
   try{
     await api('POST','/api/comptes-rendus',{
       date,
@@ -905,8 +916,7 @@ async function saveCR(){
       a_faire:  document.getElementById('cr-todo').value.trim(),
       besoin:   document.getElementById('cr-need').value.trim(),
       blocage:  document.getElementById('cr-block').value.trim(),
-      commentaire: document.getElementById('cr-comment').value.trim(),
-      pannes: JSON.stringify(pannes)
+      commentaire: baseComment + pannesStr
     });
     toast('Compte rendu enregistré ✓');
     clearCR();
@@ -1348,180 +1358,148 @@ async function renderGantt(){
   if(!gStart) gStart = gWeekStart(new Date());
   const wrap = document.getElementById('g-wrap');
   if(!wrap) return;
-  wrap.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
 
-  // Build days array for the week
+  // Build 7 days
   const days = [];
   for(let i=0;i<7;i++){
     const d=new Date(gStart); d.setDate(d.getDate()+i); days.push(d);
   }
-  const todayStr = gFmt(new Date());
-  const MN = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const d0=days[0], d6=days[6];
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  // Update period label
+  const MN=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const DN=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   document.getElementById('g-period').textContent =
-    d0.getMonth()===d6.getMonth()
-      ? MN[d0.getMonth()]+' '+d0.getFullYear()+' — du '+d0.getDate()+' au '+d6.getDate()
-      : d0.getDate()+' '+MN[d0.getMonth()]+' — '+d6.getDate()+' '+MN[d6.getMonth()]+' '+d6.getFullYear();
+    MN[days[0].getMonth()]+' '+days[0].getFullYear()+
+    ' — Sem. du '+days[0].getDate()+' au '+days[6].getDate();
 
-  const from = gFmt(days[0]);
-  const to   = gFmt(days[6]);
+  wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
 
-  // Fetch all affectations using the same api() function as the rest of the app
-  let allAfs = [];
-  try { allAfs = (await api('GET', '/api/affectations')) || []; }
-  catch(e){
-    wrap.innerHTML = `<div class="gantt-empty"><p style="color:var(--red)">Erreur: ${e.message}</p></div>`;
+  // Step 1: get affectations
+  let afs = [];
+  try{
+    const res = await fetch('/api/affectations',{credentials:'include'});
+    if(res.ok) afs = await res.json();
+    else{ wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erreur API: '+res.status+'</div>'; return; }
+  }catch(e){
+    wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erreur réseau: '+e.message+'</div>';
     return;
   }
 
-  // Filter affectations that overlap this week
-  const weekAfs = allAfs.filter(a => {
+  // Step 2: filter affectations overlapping this week
+  const wFrom = days[0].toISOString().slice(0,10);
+  const wTo   = days[6].toISOString().slice(0,10);
+  const wAfs  = afs.filter(a=>{
     const dl = a.deadline || a.date;
-    return a.date <= to && dl >= from;
+    return a.date <= wTo && dl >= wFrom;
   });
 
-  // Build users list
+  // Step 3: get technician list
   let users = [];
-  if(ME?.role === 'responsable'){
-    try {
-      const all = (await api('GET', '/api/users')) || [];
-      users = all.filter(u => u.role === 'technicien');
-    } catch(e){ users = []; }
-    // Fallback: extract from affectations
+  if(ME && ME.role==='responsable'){
+    try{
+      const ru = await fetch('/api/users',{credentials:'include'});
+      if(ru.ok){
+        const all = await ru.json();
+        users = all.filter(u=>u.role==='technicien');
+      }
+    }catch(e){}
     if(!users.length){
-      const seen = {};
-      allAfs.forEach(a => {
-        if(a.user_id && !seen[a.user_id]){
-          seen[a.user_id] = true;
-          users.push({id: a.user_id, nom: a.tech_nom || 'Tech '+a.user_id});
-        }
-      });
+      // Extract from affectations
+      const seen={};
+      afs.forEach(a=>{ if(a.user_id && !seen[a.user_id]){ seen[a.user_id]=true; users.push({id:a.user_id,nom:a.tech_nom||('Tech '+a.user_id)}); }});
     }
-  } else {
-    users = [{id: ME?.id, nom: ME?.nom}];
+  } else if(ME){
+    users = [{id:ME.id, nom:ME.nom}];
   }
 
   if(!users.length){
-    wrap.innerHTML = '<div class="gantt-empty"><p>Aucune affectation cette semaine</p><p style="font-size:11px;color:var(--text3);margin-top:6px">Créez des affectations pour les voir apparaître ici</p></div>';
+    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)"><p>Aucune affectation cette semaine</p><p style="font-size:11px;margin-top:6px">Créez des affectations pour les voir ici</p></div>';
     return;
   }
 
-  const TW = 160;
-  const DN = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  let h = '<div class="gantt-wrap">';
+  // Step 4: build HTML
+  const TW=155, CELL_H=36, PAD=6;
+  let rows='';
 
-  // Header row
-  h += `<div class="gantt-hdr" style="display:grid;grid-template-columns:${TW}px 1fr">
-    <div class="gantt-hdr-tech">Technicien</div>
-    <div class="gantt-hdr-days">`;
-  days.forEach(d => {
-    const isT = gFmt(d) === todayStr;
-    h += `<div class="gantt-day-hd${isT?' gtoday':''}">${DN[d.getDay()]}<br><strong>${d.getDate()}</strong></div>`;
-  });
-  h += '</div></div><div class="gantt-body">';
+  users.forEach(user=>{
+    const uAfs = wAfs.filter(a=>String(a.user_id)===String(user.id)||a.tech_nom===user.nom);
+    const rowH = Math.max(50, uAfs.length*(CELL_H+4)+PAD*2);
+    const nameParts = user.nom.split(' ');
+    const firstName = nameParts[0];
+    const lastName  = nameParts.slice(1).join(' ');
 
-  // One row per technician
-  users.forEach(user => {
-    const uAfs = weekAfs.filter(a =>
-      String(a.user_id) === String(user.id) || a.tech_nom === user.nom
-    );
-    const rowH = Math.max(64, uAfs.length * 32 + 20);
+    let bars='';
+    uAfs.forEach((af,idx)=>{
+      // Clamp bar to visible week
+      const afS = new Date(af.date+'T00:00:00');
+      const afE = new Date((af.deadline||af.date)+'T00:00:00');
+      const visS = afS<days[0]?days[0]:afS;
+      const visE = afE>days[6]?days[6]:afE;
 
-    h += `<div class="gantt-row" style="display:grid;grid-template-columns:${TW}px 1fr;min-height:${rowH}px">
-      <div class="gantt-tech" style="min-height:${rowH}px">
-        <span style="font-weight:600">${user.nom.split(' ')[0]}</span>
-        <span style="font-size:10px;color:var(--text3)">${user.nom.split(' ').slice(1).join(' ')}</span>
-      </div>
-      <div class="gantt-cells" style="position:relative;display:flex;min-height:${rowH}px">`;
+      const visSD = visS.toISOString().slice(0,10);
+      const visED = visE.toISOString().slice(0,10);
+      let colS = days.findIndex(d=>d.toISOString().slice(0,10)===visSD);
+      let colE = days.findIndex(d=>d.toISOString().slice(0,10)===visED);
+      if(colS<0) colS=0;
+      if(colE<0) colE=6;
+      const span = Math.max(1, colE-colS+1);
 
-    // Background columns for each day
-    days.forEach(d => {
-      const isT  = gFmt(d) === todayStr;
-      const isWE = d.getDay()===0 || d.getDay()===6;
-      h += `<div class="gantt-col${isT?' gtoday':''}${isWE?' gwe':''}"></div>`;
+      const left  = (colS/7*100).toFixed(2);
+      const width = (span/7*100 - 0.5).toFixed(2);
+      const top   = PAD + idx*(CELL_H+4);
+      const prio  = (af.priorite||'Moyenne').toLowerCase();
+      const done  = af.statut==='Terminé';
+      const lbl   = af.tache.length>22?af.tache.slice(0,20)+'…':af.tache;
+      const info  = af.tache+'\nDu: '+af.date+' → '+(af.deadline||af.date)+'\nStatut: '+af.statut+'\nPriorité: '+af.priorite+(af.atelier?' | '+af.atelier:'');
+
+      bars += '<div class="gantt-bar prio-'+prio+(done?' done':'')+'"'+
+        ' style="left:'+left+'%;width:'+width+'%;top:'+top+'px"'+
+        ' title="'+info.replace(/"/g,"'")+'">'+
+        (done?'✓ ':'')+lbl+
+        '</div>';
     });
 
-    // Bars for each affectation
-    uAfs.forEach((af, idx) => {
-      const afS  = new Date(af.date+'T12:00:00');
-      const afE  = af.deadline ? new Date(af.deadline+'T12:00:00') : afS;
-      const barS = afS < days[0] ? days[0] : afS;
-      const barE = afE > days[6] ? days[6] : afE;
-
-      let cS = days.findIndex(d => gFmt(d) === gFmt(barS));
-      let cE = days.findIndex(d => gFmt(d) === gFmt(barE));
-      if(cS < 0) cS = 0;
-      if(cE < 0) cE = 6;
-      const span = Math.max(1, cE - cS + 1);
-
-      const left  = (cS * 100/7 + 0.3).toFixed(2);
-      const width = (span * 100/7 - 0.6).toFixed(2);
-      const top   = 8 + idx * 32;
-      const prio  = (af.priorite || 'Moyenne').toLowerCase();
-      const done  = af.statut === 'Terminé';
-      const lbl   = af.tache.length > 20 ? af.tache.slice(0,18)+'…' : af.tache;
-
-      const barId = 'bar-'+af.id;
-      h += `<div class="gantt-bar prio-${prio}${done?' done':''}"
-        id="${barId}"
-        style="left:${left}%;width:${width}%;top:${top}px"
-        title="${af.tache} | Du: ${af.date} | Deadline: ${af.deadline||'—'} | Statut: ${af.statut}"
-        onclick="showBarDetail(this)">
-        ${done?'✓ ':''}${lbl}
-      </div>`;
-    });
-
-    h += '</div></div>';
+    rows += '<div class="gantt-row" style="display:grid;grid-template-columns:'+TW+'px 1fr;min-height:'+rowH+'px;border-bottom:1px solid var(--border)">'+
+      '<div class="gantt-tech" style="padding:10px 12px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;min-height:'+rowH+'px">'+
+        '<span style="font-weight:700;font-size:12px">'+firstName+'</span>'+
+        '<span style="font-size:10px;color:var(--text3)">'+lastName+'</span>'+
+        '<span style="font-size:10px;color:var(--accent);margin-top:2px">'+uAfs.length+' aff.</span>'+
+      '</div>'+
+      '<div style="position:relative;min-height:'+rowH+'px">'+
+        // day columns
+        days.map((d,i)=>{
+          const isT=d.toISOString().slice(0,10)===todayStr;
+          const isWE=d.getDay()===0||d.getDay()===6;
+          return '<div style="position:absolute;left:'+(i/7*100).toFixed(2)+'%;width:'+(1/7*100).toFixed(2)+'%;height:100%;'+
+            (isT?'background:var(--adim)':isWE?'background:rgba(0,0,0,0.02)':'')+
+            ';border-right:1px solid var(--border)"></div>';
+        }).join('')+
+        bars+
+      '</div>'+
+    '</div>';
   });
 
-  h += '</div></div>';
-  wrap.innerHTML = h;
+  // Header
+  const header = '<div style="display:grid;grid-template-columns:'+TW+'px 1fr;background:var(--s2);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border2)">'+
+    '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;border-right:1px solid var(--border2)">Technicien</div>'+
+    '<div style="display:flex">'+
+      days.map(d=>{
+        const isT=d.toISOString().slice(0,10)===todayStr;
+        return '<div style="flex:1;text-align:center;padding:8px 2px;font-size:11px;font-weight:600;color:'+(isT?'var(--accent)':'var(--text2)')+';border-right:1px solid var(--border)">'+
+          DN[d.getDay()]+'<br><strong>'+d.getDate()+'</strong></div>';
+      }).join('')+
+    '</div>'+
+  '</div>';
+
+  wrap.innerHTML =
+    '<div style="min-width:600px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)">'+
+      header+
+      '<div>'+rows+'</div>'+
+    '</div>';
 }
 
 
-
-// ── PANNES SUR LE PÉRIMÈTRE ──────────────────────────────────────────────────
-let panneCount = 0;
-
-function addPanneRow(machine='', desc='', statut='En panne'){
-  panneCount++;
-  const id = 'panne-'+panneCount;
-  const div = document.createElement('div');
-  div.id = id;
-  div.style.cssText = 'background:var(--s2);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center';
-  div.innerHTML = `
-    <input type="text" placeholder="Machine / Équipement" value="${machine}" style="font-size:12px;padding:6px 10px" class="panne-machine">
-    <input type="text" placeholder="Description de la panne" value="${desc}" style="font-size:12px;padding:6px 10px" class="panne-desc">
-    <select style="font-size:12px;padding:6px 8px;width:auto" class="panne-statut">
-      <option value="En panne" ${statut==='En panne'?'selected':''}>🔴 En panne</option>
-      <option value="Résolue" ${statut==='Résolue'?'selected':''}>✅ Résolue</option>
-    </select>
-    <button type="button" class="btn-del" onclick="document.getElementById('${id}').remove()" style="padding:5px 8px;font-size:12px">✕</button>
-  `;
-  document.getElementById('pannes-list').appendChild(div);
-}
-
-function getPannes(){
-  const rows = document.querySelectorAll('#pannes-list > div');
-  const pannes = [];
-  rows.forEach(row => {
-    const machine = row.querySelector('.panne-machine')?.value.trim();
-    const desc    = row.querySelector('.panne-desc')?.value.trim();
-    const statut  = row.querySelector('.panne-statut')?.value;
-    if(machine) pannes.push({machine, desc, statut});
-  });
-  return pannes;
-}
-
-function loadPannes(pannes){
-  document.getElementById('pannes-list').innerHTML = '';
-  panneCount = 0;
-  if(!pannes || !pannes.length) return;
-  pannes.forEach(p => addPanneRow(p.machine, p.desc||'', p.statut||'En panne'));
-}
-
-
-// ── HISTORIQUE DES AFFECTATIONS ───────────────────────────────────────────────
 async function loadHistorique(){
   const list   = document.getElementById('hist-list');
   const filtre = document.getElementById('hist-filter-statut')?.value || '';
