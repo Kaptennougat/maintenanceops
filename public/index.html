@@ -211,9 +211,9 @@ tbody tr:hover td{background:var(--s2)}
 .gantt-body{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);overflow:hidden}
 .gantt-row{display:grid;border-bottom:1px solid var(--border)}
 .gantt-row:last-child{border-bottom:none}
-.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:12px;min-height:60px}
-.gantt-days-cell{display:flex;position:relative;background:var(--s1)}
-.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:60px;position:relative}
+.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:12px;min-height:80px}
+.gantt-days-cell{display:flex;position:relative;background:var(--s1);min-height:80px}
+.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:80px;position:relative}
 .gantt-day-col:last-child{border-right:none}
 .gantt-day-col.today{background:var(--adim)}
 .gantt-day-col.weekend{background:rgba(255,255,255,.02)}
@@ -361,6 +361,18 @@ tbody tr:hover td{background:var(--s2)}
 
       <!-- ── COMPTE RENDU ── -->
       <div class="tab" id="tab-cr">
+        <!-- TYPE SELECTOR -->
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="btn btn-primary" id="cr-type-jour" onclick="switchCRType('jour')" style="flex:1;justify-content:center">
+            📅 Compte rendu journalier
+          </button>
+          <button class="btn" id="cr-type-ot" onclick="switchCRType('ot')" style="flex:1;justify-content:center">
+            🔧 Compte rendu par affectation
+          </button>
+        </div>
+
+        <!-- CR JOURNALIER -->
+        <div id="cr-form-jour">
         <div class="card">
           <div class="card-hd">📅 Compte rendu journalier</div>
           <div class="g2">
@@ -381,12 +393,48 @@ tbody tr:hover td{background:var(--s2)}
             <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer le compte rendu</button>
           </div>
         </div>
-
         <!-- MES CR PRÉCÉDENTS -->
         <div style="margin-top:4px">
           <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes comptes rendus récents</div>
           <div id="my-cr-list"></div>
         </div>
+        </div><!-- /cr-form-jour -->
+
+        <!-- CR PAR AFFECTATION -->
+        <div id="cr-form-ot" style="display:none">
+        <div class="card">
+          <div class="card-hd">🔧 Compte rendu par affectation</div>
+          <div class="field">
+            <label class="label">Sélectionner une affectation <span class="req">*</span></label>
+            <select id="cr-ot-select" onchange="loadCROTDetails()">
+              <option value="">-- Choisir une affectation --</option>
+            </select>
+          </div>
+          <div id="cr-ot-detail" style="display:none">
+            <div class="field"><label class="label">Ce qui a été réalisé</label><textarea id="cr-ot-realise" placeholder="Décrivez les travaux effectués sur cet OT..."></textarea></div>
+            <div class="field"><label class="label">Résultat / État final</label>
+              <select id="cr-ot-resultat">
+                <option value="Terminé">✅ Terminé — OT clôturé</option>
+                <option value="En cours">⏳ En cours — travaux partiels</option>
+                <option value="Bloqué">🔴 Bloqué — intervention impossible</option>
+                <option value="En attente pièce">📦 En attente de pièce</option>
+              </select>
+            </div>
+            <div class="field"><label class="label">Temps passé (heures)</label><input type="number" id="cr-ot-temps" min="0" step="0.5" placeholder="Ex: 2.5"></div>
+            <div class="field"><label class="label">Pièces utilisées</label><input type="text" id="cr-ot-pieces" placeholder="Ex: Roulement 6205-2RS x2, Joint torique Ø45 x1"></div>
+            <div class="field"><label class="label">Observations / Anomalies détectées</label><textarea id="cr-ot-obs" placeholder="Anomalies détectées, risques, recommandations..." style="min-height:56px"></textarea></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveCROT()">💾 Enregistrer le CR OT</button>
+            </div>
+          </div>
+        </div>
+        <!-- MES CR OT PRÉCÉDENTS -->
+        <div style="margin-top:4px">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes CR par affectation récents</div>
+          <div id="my-crot-list"></div>
+        </div>
+        </div><!-- /cr-form-ot -->
+
       </div>
 
       <!-- ── AFFECTATIONS ── -->
@@ -726,7 +774,7 @@ function showTab(t){
 
 function refreshCurrent(){
   if(currentTab==='ensemble') loadEnsemble();
-  if(currentTab==='cr') loadMyCR();
+  if(currentTab==='cr'){ loadMyCR(); loadMyCROT(); }
   if(currentTab==='affectations'){ loadAF(); updateBadge(); }
   if(currentTab==='stock') loadPieces();
   if(currentTab==='knowledge') loadEquipements();
@@ -776,6 +824,84 @@ function renderCR(r){
 }
 
 // ── COMPTE RENDU ─────────────────────────────────────────────────────────────
+// ── CR TYPE SWITCH ────────────────────────────────────────────────────────────
+let crType = 'jour';
+
+function switchCRType(type){
+  crType = type;
+  document.getElementById('cr-form-jour').style.display = type==='jour' ? 'block' : 'none';
+  document.getElementById('cr-form-ot').style.display  = type==='ot'   ? 'block' : 'none';
+  document.getElementById('cr-type-jour').className = 'btn ' + (type==='jour' ? 'btn-primary' : '');
+  document.getElementById('cr-type-jour').style.flex = '1';
+  document.getElementById('cr-type-jour').style.justifyContent = 'center';
+  document.getElementById('cr-type-ot').className  = 'btn ' + (type==='ot'   ? 'btn-primary' : '');
+  document.getElementById('cr-type-ot').style.flex = '1';
+  document.getElementById('cr-type-ot').style.justifyContent = 'center';
+  if(type==='ot') loadMyAFForCR();
+}
+
+async function loadMyAFForCR(){
+  try{
+    const items = await api('GET','/api/affectations') || [];
+    const active = items.filter(a => a.statut !== 'Terminé');
+    const sel = document.getElementById('cr-ot-select');
+    sel.innerHTML = '<option value="">-- Choisir une affectation --</option>';
+    active.forEach(a => {
+      sel.innerHTML += `<option value="${a.id}" data-tache="${a.tache}" data-ot="${a.ot||''}" data-atelier="${a.atelier||''}">${a.date} — ${a.ot?a.ot+' — ':''}${a.tache}</option>`;
+    });
+    if(!active.length) sel.innerHTML = '<option value="">Aucune affectation en cours</option>';
+    document.getElementById('cr-ot-detail').style.display = 'none';
+  }catch{}
+}
+
+function loadCROTDetails(){
+  const sel = document.getElementById('cr-ot-select');
+  const val = sel.value;
+  const detail = document.getElementById('cr-ot-detail');
+  if(!val){ detail.style.display='none'; return; }
+  detail.style.display = 'block';
+  ['cr-ot-realise','cr-ot-pieces','cr-ot-obs'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('cr-ot-temps').value = '';
+  document.getElementById('cr-ot-resultat').value = 'Terminé';
+}
+
+async function saveCROT(){
+  const afId = document.getElementById('cr-ot-select').value;
+  if(!afId){ toast('Sélectionnez une affectation',false); return; }
+  const realise  = document.getElementById('cr-ot-realise').value.trim();
+  const resultat = document.getElementById('cr-ot-resultat').value;
+  const temps    = document.getElementById('cr-ot-temps').value;
+  const pieces   = document.getElementById('cr-ot-pieces').value.trim();
+  const obs      = document.getElementById('cr-ot-obs').value.trim();
+  const crText   = `${realise}${pieces?'\nPièces: '+pieces:''}${obs?'\nObs: '+obs:''}${temps?'\nTemps: '+temps+'h':''}`;
+  try{
+    await api('PUT','/api/affectations/'+afId, {statut: resultat==='Terminé'?'Terminé':resultat==='En cours'?'En cours':'À faire', cr_ot: crText});
+    toast('CR OT enregistré ✓');
+    document.getElementById('cr-ot-select').value='';
+    document.getElementById('cr-ot-detail').style.display='none';
+    loadMyAFForCR();
+    loadMyCROT();
+    updateBadge();
+  }catch(e){ toast('Erreur',false); }
+}
+
+async function loadMyCROT(){
+  try{
+    const items = await api('GET','/api/affectations')||[];
+    const withCR = items.filter(a => a.cr_ot);
+    const list = document.getElementById('my-crot-list');
+    if(!withCR.length){ list.innerHTML='<div class="empty"><p>Aucun CR OT enregistré</p></div>'; return; }
+    list.innerHTML = withCR.slice(0,5).map(a=>`
+      <div style="background:var(--s2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:600">${a.ot||'OT'} — ${a.tache.length>30?a.tache.slice(0,28)+'…':a.tache}</span>
+          <span class="badge ${a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':'bo'}">${a.statut}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);white-space:pre-wrap">${a.cr_ot}</div>
+      </div>`).join('');
+  }catch{}
+}
+
 async function loadMyCR(){
   try{
     const items=await api('GET','/api/comptes-rendus');
@@ -1404,7 +1530,7 @@ async function renderGantt(){
       html += `<div class="gantt-empty">Aucun technicien</div>`;
     } else {
       users.forEach(user => {
-        const userAfs = afs.filter(a => a.user_id===user.id || a.tech_nom===user.nom);
+        const userAfs = afs.filter(a => String(a.user_id)===String(user.id) || a.tech_nom===user.nom);
         html += `<div class="gantt-row" style="grid-template-columns:${TECH_W}px 1fr">
           <div class="gantt-tech-cell">${user.nom.split(' ')[0]}<br><span style="font-size:10px;color:var(--text3);font-weight:400">${user.nom.split(' ').slice(1).join(' ')}</span></div>
           <div class="gantt-days-cell">`;
@@ -1439,14 +1565,14 @@ async function renderGantt(){
 
           const pct = 100/7;
           const left = (dayIdx * pct).toFixed(2);
-          const width = (spanDays * pct - 0.5).toFixed(2);
+          const width = (spanDays * pct - 0.3).toFixed(2);
           const prio = (af.priorite||'moyenne').toLowerCase();
           const done = af.statut==='Terminé';
-          const label = af.tache.length>30 ? af.tache.slice(0,28)+'…' : af.tache;
-          const top = 6 + idx * 30;
+          const label = af.tache.length>25 ? af.tache.slice(0,23)+'…' : af.tache;
+          const top = 8 + idx * 32;
 
           html += `<div class="gantt-bar ${prio}${done?' termine':''}"
-            style="left:${left}%;width:${width}%;top:${top}px"
+            style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;position:absolute"
             title="${af.tache} — ${af.statut}${af.deadline?' — Deadline: '+af.deadline:''}"
             onclick="showGanttDetail(${JSON.stringify(af).replace(/"/g,'&quot;')})">
             ${done?'✓ ':''}${label}
