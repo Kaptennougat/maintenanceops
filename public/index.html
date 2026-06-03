@@ -244,6 +244,9 @@ tbody tr:hover td{background:var(--s2)}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none}
 .overlay.show{display:block}
+
+.retard-item { border-color: rgba(240,74,74,0.3) !important; background: rgba(240,74,74,0.04) !important; }
+
 </style>
 </head>
 <body>
@@ -298,6 +301,11 @@ tbody tr:hover td{background:var(--s2)}
       <button class="nav-item" id="nav-knowledge" onclick="showTab('knowledge')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
         Base de connaissances
+      </button>
+      <button class="nav-item" id="nav-historique" onclick="showTab('historique')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+        Historique
+        <span class="nav-badge" id="badge-retard">0</span>
       </button>
       <button class="nav-item" id="nav-rapport" onclick="showTab('rapport')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
@@ -410,11 +418,12 @@ tbody tr:hover td{background:var(--s2)}
             </div>
             <div id="cr-af-detail" style="display:none">
               <div class="field"><label class="label">Ce qui a été réalisé</label><textarea id="cr-af-realise" placeholder="Décrivez les travaux effectués..."></textarea></div>
-              <div class="field"><label class="label">Résultat</label>
+              <div class="field"><label class="label">État de l'affectation après intervention</label>
                 <select id="cr-af-statut">
-                  <option value="Terminé">✅ Terminé — OT clôturé</option>
-                  <option value="En cours">⏳ En cours — travaux partiels</option>
-                  <option value="À faire">🔴 Bloqué — intervention impossible</option>
+                  <option value="Terminé">✅ Affectation terminée — clôturée</option>
+                  <option value="En cours">⏳ Travaux en cours — à poursuivre</option>
+                  <option value="À faire">📦 En attente de pièce ou validation</option>
+                  <option value="Non réalisé">🔴 Non réalisée — intervention impossible</option>
                 </select>
               </div>
               <div class="g2">
@@ -566,7 +575,32 @@ tbody tr:hover td{background:var(--s2)}
         </div>
       </div>
 
+      <!-- ── HISTORIQUE ── -->
+      <div class="tab" id="tab-historique">
+        <div class="kpi-grid" id="hist-kpis" style="margin-bottom:16px">
+          <div class="kpi"><div class="kpi-val" id="h-total">—</div><div class="kpi-lbl">Total</div></div>
+          <div class="kpi"><div class="kpi-val" id="h-done" style="color:var(--green)">—</div><div class="kpi-lbl">Terminées</div></div>
+          <div class="kpi"><div class="kpi-val" id="h-cours" style="color:var(--orange)">—</div><div class="kpi-lbl">En cours</div></div>
+          <div class="kpi"><div class="kpi-val" id="h-retard" style="color:var(--red)">—</div><div class="kpi-lbl">Deadline dépassée</div></div>
+        </div>
+        <div class="filter-bar" style="margin-bottom:14px">
+          <label>Filtre :</label>
+          <select id="hist-filter-statut" onchange="loadHistorique()" style="width:160px">
+            <option value="">Tous les statuts</option>
+            <option value="À faire">À faire</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+            <option value="Non réalisé">Non réalisé</option>
+            <option value="retard">⚠ Deadline dépassée</option>
+          </select>
+          <div style="flex:1"></div>
+          <button class="btn btn-sm" onclick="loadHistorique()">Actualiser</button>
+        </div>
+        <div id="hist-list"><div class="empty"><p>Chargement...</p></div></div>
+      </div>
+
       <!-- ── GANTT ── -->
+      <div class="tab" id="tab-gantt">      <!-- ── GANTT ── -->
       <div class="tab" id="tab-gantt">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -759,7 +793,7 @@ function showTab(t){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t)?.classList.add('active');
-  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',rapport:'Rapports',gantt:'Planning Gantt'};
+  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',historique:'Historique des affectations',rapport:'Rapports',gantt:'Planning Gantt'};
   document.getElementById('page-title').textContent=titles[t]||t;
   refreshCurrent();
   if(t==='gantt') loadGantt();
@@ -1071,6 +1105,8 @@ async function updateAFStatus(id,statut){
   await api('PUT','/api/affectations/'+id,{statut});
   toast('Statut mis à jour ✓');
   updateBadge();
+  updateRetardBadge();
+  renderGantt();
 }
 
 function addCROT(id, existing){
@@ -1454,11 +1490,18 @@ async function saveCRAF(){
   if(temps)  cr += '\nTemps : '+temps+'h';
   if(obs)    cr += '\nObs : '+obs;
   try{
-    await api('PUT','/api/affectations/'+afId,{statut, cr_ot:cr});
-    toast('CR OT enregistré ✓');
+    await api('PUT','/api/affectations/'+afId, {statut, cr_ot:cr});
+    toast('CR enregistré ✓' + (statut==='Terminé' ? ' — Affectation clôturée automatiquement' : ''));
     document.getElementById('cr-af-select').value='';
     document.getElementById('cr-af-detail').style.display='none';
-    loadMyAFsForCR(); loadMyCRAF(); updateBadge(); renderGantt();
+    // Auto sync everything
+    loadMyAFsForCR();
+    loadMyCRAF();
+    updateBadge();
+    updateRetardBadge();
+    renderGantt();
+    if(currentTab==='historique') loadHistorique();
+    if(currentTab==='affectations') loadAF();
   }catch(e){ toast('Erreur',false); }
 }
 
@@ -1673,6 +1716,112 @@ function loadPannes(pannes){
   panneCount = 0;
   if(!pannes || !pannes.length) return;
   pannes.forEach(p => addPanneRow(p.machine, p.desc||'', p.statut||'En panne'));
+}
+
+
+// ── HISTORIQUE DES AFFECTATIONS ───────────────────────────────────────────────
+async function loadHistorique(){
+  const list   = document.getElementById('hist-list');
+  const filtre = document.getElementById('hist-filter-statut')?.value || '';
+  if(!list) return;
+  list.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
+  try{
+    const items = (await api('GET', '/api/affectations')) || [];
+    const today = new Date().toISOString().slice(0,10);
+
+    // Apply filter
+    let filtered = items;
+    if(filtre === 'retard'){
+      filtered = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé');
+    } else if(filtre){
+      filtered = items.filter(a => a.statut === filtre);
+    }
+
+    // Sort: retard first, then by date desc
+    filtered.sort((a,b) => {
+      const aRetard = a.deadline && a.deadline < today && a.statut !== 'Terminé';
+      const bRetard = b.deadline && b.deadline < today && b.statut !== 'Terminé';
+      if(aRetard && !bRetard) return -1;
+      if(!aRetard && bRetard) return 1;
+      return b.date.localeCompare(a.date);
+    });
+
+    // KPIs
+    const total  = items.length;
+    const done   = items.filter(a => a.statut === 'Terminé').length;
+    const cours  = items.filter(a => a.statut === 'En cours').length;
+    const retard = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé').length;
+
+    const el = id => document.getElementById(id);
+    if(el('h-total')) el('h-total').textContent = total;
+    if(el('h-done'))  el('h-done').textContent  = done;
+    if(el('h-cours')) el('h-cours').textContent = cours;
+    if(el('h-retard'))el('h-retard').textContent= retard;
+
+    if(!filtered.length){
+      list.innerHTML = '<div class="empty"><p>Aucune affectation</p></div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(a => {
+      const today2 = new Date().toISOString().slice(0,10);
+      const isRetard = a.deadline && a.deadline < today2 && a.statut !== 'Terminé';
+      const dlDiff = a.deadline ? Math.ceil((new Date(a.deadline) - new Date(today2)) / 86400000) : null;
+      let dlBadge = '';
+      if(!a.deadline) dlBadge = '<span class="dl dl-none">Pas de deadline</span>';
+      else if(isRetard) dlBadge = `<span class="dl dl-late">⚠ Dépassée (${a.deadline})</span>`;
+      else if(dlDiff === 0) dlBadge = '<span class="dl dl-warn">⚡ Auj.</span>';
+      else if(dlDiff <= 3) dlBadge = `<span class="dl dl-warn">⏰ J-${dlDiff}</span>`;
+      else dlBadge = `<span class="dl dl-ok">✓ ${a.deadline}</span>`;
+
+      const stClass = a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':a.statut==='Non réalisé'?'br':'bgr';
+      const prioClass = a.priorite==='Haute'?'br':a.priorite==='Basse'?'bg':'bo';
+
+      return `<div class="af-item${isRetard?' retard-item':''}">
+        <div class="af-bar ${(a.priorite||'moyenne').toLowerCase()}"></div>
+        <div class="af-body">
+          <div class="af-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${ME?.role==='responsable'?`<span style="color:var(--accent);font-weight:700">${a.tech_nom||''}</span> —`:''} 
+            ${a.tache}
+            ${a.ot?`<span style="font-size:10px;font-family:monospace;color:var(--text3)">${a.ot}</span>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">
+            📅 ${a.date} ${a.atelier?'· '+a.atelier:''}
+          </div>
+          <div class="af-meta" style="margin-top:6px">
+            ${dlBadge}
+            <span class="badge ${stClass}">${a.statut}</span>
+            <span class="badge ${prioClass}">${a.priorite}</span>
+          </div>
+          ${a.note_resp?`<div class="af-note">→ ${a.note_resp}</div>`:''}
+          ${a.cr_ot?`<div style="background:var(--s2);border-radius:var(--rsm);padding:8px 10px;margin-top:6px;font-size:11px;color:var(--text2);border-left:3px solid var(--accent)">📝 ${a.cr_ot}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          <select class="status-sel" onchange="updateAFStatus(${a.id},this.value)">
+            ${['À faire','En cours','Terminé','Non réalisé'].map(s=>`<option${s===a.statut?' selected':''}>${s}</option>`).join('')}
+          </select>
+          ${ME?.role==='responsable'?`<button class="btn btn-red btn-sm" onclick="delAFHist(${a.id})">🗑</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+  }catch(e){ list.innerHTML = `<div class="empty"><p>Erreur: ${e.message}</p></div>`; }
+}
+
+async function delAFHist(id){
+  if(!confirm('Supprimer cette affectation ?')) return;
+  try{ await api('DELETE','/api/affectations/'+id); loadHistorique(); renderGantt(); toast('Supprimé'); }
+  catch(e){ toast('Erreur',false); }
+}
+
+async function updateRetardBadge(){
+  try{
+    const items = (await api('GET','/api/affectations')) || [];
+    const today = new Date().toISOString().slice(0,10);
+    const retard = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé').length;
+    const b = document.getElementById('badge-retard');
+    if(b){ b.textContent = retard; b.style.display = retard > 0 ? 'inline' : 'none'; }
+  }catch{}
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
