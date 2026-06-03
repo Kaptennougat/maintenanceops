@@ -380,6 +380,16 @@ tbody tr:hover td{background:var(--s2)}
             <div class="field"><label class="label">Besoin en pièces</label><input type="text" id="cr-need" placeholder="Ex: Courroie COV-22X, qty 2"></div>
             <div class="field"><label class="label">Blocage signalé</label><input type="text" id="cr-block" placeholder="Ex: Zone inaccessible..."></div>
             <div class="field"><label class="label">Commentaires</label><textarea id="cr-comment" style="min-height:56px" placeholder="Observations libres..."></textarea></div>
+
+            <!-- ── PANNES SUR MON PÉRIMÈTRE ── -->
+            <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <label class="label" style="margin:0">🔴 Pannes sur mon périmètre</label>
+                <button type="button" class="btn btn-sm" onclick="addPanneRow()" style="font-size:11px">+ Ajouter une machine</button>
+              </div>
+              <div id="pannes-list"></div>
+            </div>
+
             <div class="btn-row">
               <button class="btn" onclick="clearCR()">Effacer</button>
               <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer</button>
@@ -801,6 +811,20 @@ function renderCR(r){
   if(r.blocage) h+=`<div class="alert-s alert-r"><span>⛔</span><div><b>Blocage :</b> ${r.blocage}</div></div>`;
   if(r.besoin)  h+=`<div class="alert-s alert-o"><span>📦</span><div><b>Besoin :</b> ${r.besoin}</div></div>`;
   if(r.commentaire) h+=`<div class="info-row"><div class="info-lbl">💬 Commentaire</div><div style="color:var(--text2)">${r.commentaire}</div></div>`;
+  // Show pannes
+  try{
+    const pannes = JSON.parse(r.pannes||'[]');
+    if(pannes.length){
+      h+=`<div class="info-row"><div class="info-lbl">🔴 Pannes sur le périmètre</div>`;
+      h+=pannes.map(p=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="font-weight:600">${p.machine}</span>
+          ${p.desc?`<span style="color:var(--text2)">— ${p.desc}</span>`:''}
+          <span class="badge ${p.statut==='Résolue'?'bg':'br'}" style="margin-left:auto">${p.statut==='Résolue'?'✅ Résolue':'🔴 En panne'}</span>
+        </div>`).join('');
+      h+=`</div>`;
+    }
+  }catch{}
   if(ME?.role==='responsable') h+=`<div style="text-align:right;margin-top:10px"><button class="btn btn-red btn-sm" onclick="delCR(${r.id})">🗑 Supprimer</button></div>`;
   h+='</div>';
   return h;
@@ -917,12 +941,15 @@ function loadCREdit(r){
   document.getElementById('cr-need').value     = r.besoin||'';
   document.getElementById('cr-block').value    = r.blocage||'';
   document.getElementById('cr-comment').value  = r.commentaire||'';
+  try{ loadPannes(JSON.parse(r.pannes||'[]')); }catch{ loadPannes([]); }
+  setCRType('jour');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function saveCR(){
   const date=document.getElementById('cr-date').value;
   if(!date){toast('Date requise',false);return;}
+  const pannes = getPannes();
   try{
     await api('POST','/api/comptes-rendus',{
       date,
@@ -933,7 +960,8 @@ async function saveCR(){
       a_faire:  document.getElementById('cr-todo').value.trim(),
       besoin:   document.getElementById('cr-need').value.trim(),
       blocage:  document.getElementById('cr-block').value.trim(),
-      commentaire: document.getElementById('cr-comment').value.trim()
+      commentaire: document.getElementById('cr-comment').value.trim(),
+      pannes: JSON.stringify(pannes)
     });
     toast('Compte rendu enregistré ✓');
     clearCR();
@@ -945,6 +973,8 @@ function clearCR(){
   ['cr-done','cr-todo','cr-need','cr-block','cr-comment'].forEach(id=>document.getElementById(id).value='');
   ['cr-closed','cr-open','cr-waiting'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cr-date').value=TODAY;
+  document.getElementById('pannes-list').innerHTML='';
+  panneCount=0;
 }
 
 async function delCR(id){
@@ -1603,6 +1633,47 @@ async function renderGantt(){
   wrap.innerHTML = h;
 }
 
+
+
+// ── PANNES SUR LE PÉRIMÈTRE ──────────────────────────────────────────────────
+let panneCount = 0;
+
+function addPanneRow(machine='', desc='', statut='En panne'){
+  panneCount++;
+  const id = 'panne-'+panneCount;
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'background:var(--s2);border-radius:var(--rsm);padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center';
+  div.innerHTML = `
+    <input type="text" placeholder="Machine / Équipement" value="${machine}" style="font-size:12px;padding:6px 10px" class="panne-machine">
+    <input type="text" placeholder="Description de la panne" value="${desc}" style="font-size:12px;padding:6px 10px" class="panne-desc">
+    <select style="font-size:12px;padding:6px 8px;width:auto" class="panne-statut">
+      <option value="En panne" ${statut==='En panne'?'selected':''}>🔴 En panne</option>
+      <option value="Résolue" ${statut==='Résolue'?'selected':''}>✅ Résolue</option>
+    </select>
+    <button type="button" class="btn-del" onclick="document.getElementById('${id}').remove()" style="padding:5px 8px;font-size:12px">✕</button>
+  `;
+  document.getElementById('pannes-list').appendChild(div);
+}
+
+function getPannes(){
+  const rows = document.querySelectorAll('#pannes-list > div');
+  const pannes = [];
+  rows.forEach(row => {
+    const machine = row.querySelector('.panne-machine')?.value.trim();
+    const desc    = row.querySelector('.panne-desc')?.value.trim();
+    const statut  = row.querySelector('.panne-statut')?.value;
+    if(machine) pannes.push({machine, desc, statut});
+  });
+  return pannes;
+}
+
+function loadPannes(pannes){
+  document.getElementById('pannes-list').innerHTML = '';
+  panneCount = 0;
+  if(!pannes || !pannes.length) return;
+  pannes.forEach(p => addPanneRow(p.machine, p.desc||'', p.statut||'En panne'));
+}
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function toast(msg,ok=true){
