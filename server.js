@@ -11,6 +11,7 @@ const { pool, initDB }              = require('./db');
 const { authMiddleware, managerOnly, SECRET } = require('./middleware/auth');
 
 const app  = express();
+const PORT = process.env.PORT || 3000;
 
 // ── VAPID ──────────────────────────────────────────────────────────────────────
 const VAPID_FILE = path.join(__dirname, 'data', 'vapid.json');
@@ -50,11 +51,7 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ ok: true });
 });
-app.delete('/api/equipements/:id', authMiddleware, managerOnly, async (req, res) => {
-  await pool.query('DELETE FROM procedures WHERE equipement_id=$1', [req.params.id]);
-  await pool.query('DELETE FROM equipements WHERE id=$1', [req.params.id]);
-  res.json({ ok: true });
-});
+
 app.get('/api/me', authMiddleware, (req, res) => {
   res.json(req.user);
 });
@@ -97,17 +94,17 @@ app.get('/api/comptes-rendus', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/comptes-rendus', authMiddleware, async (req, res) => {
-  const { date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire } = req.body;
+  const { date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire, pannes } = req.body;
   try {
     const r = await pool.query(`
-      INSERT INTO comptes_rendus (user_id, date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      INSERT INTO comptes_rendus (user_id, date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire, pannes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       ON CONFLICT (user_id, date) DO UPDATE SET
         ot_clotures=$3, ot_en_cours=$4, ot_attente=$5,
-        realise=$6, a_faire=$7, besoin=$8, blocage=$9, commentaire=$10,
+        realise=$6, a_faire=$7, besoin=$8, blocage=$9, commentaire=$10, pannes=$11,
         created_at=NOW()
       RETURNING *
-    `, [req.user.id, date, ot_clotures||0, ot_en_cours||0, ot_attente||0, realise, a_faire, besoin, blocage, commentaire]);
+    `, [req.user.id, date, ot_clotures||0, ot_en_cours||0, ot_attente||0, realise, a_faire, besoin, blocage, commentaire, pannes||'[]']);
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -382,7 +379,6 @@ setTimeout(checkDeadlines, 5000);
 // DÉMARRAGE
 // ════════════════════════════════════════════════════════════════════════════════
 initDB().then(() => {
-  const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  ✅  MaintenanceOps V2 en ligne sur le port ${PORT}\n`);
   });
