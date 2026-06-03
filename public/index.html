@@ -361,80 +361,65 @@ tbody tr:hover td{background:var(--s2)}
 
       <!-- ── COMPTE RENDU ── -->
       <div class="tab" id="tab-cr">
-        <!-- TYPE SELECTOR -->
-        <div style="display:flex;gap:10px;margin-bottom:16px">
-          <button class="btn btn-primary" id="cr-type-jour" onclick="switchCRType('jour')" style="flex:1;justify-content:center">
-            📅 Compte rendu journalier
-          </button>
-          <button class="btn" id="cr-type-ot" onclick="switchCRType('ot')" style="flex:1;justify-content:center">
-            🔧 Compte rendu par affectation
-          </button>
+        <div style="display:flex;gap:8px;margin-bottom:18px">
+          <button class="btn btn-primary" id="btn-cr-jour" onclick="setCRType('jour')" style="flex:1;justify-content:center">📅 Journalier</button>
+          <button class="btn" id="btn-cr-ot" onclick="setCRType('ot')" style="flex:1;justify-content:center">🔧 Par affectation</button>
         </div>
-
         <!-- CR JOURNALIER -->
-        <div id="cr-form-jour">
-        <div class="card">
-          <div class="card-hd">📅 Compte rendu journalier</div>
-          <div class="g2">
+        <div id="cr-jour-wrap">
+          <div class="card">
+            <div class="card-hd">📅 Compte rendu journalier</div>
             <div class="field"><label class="label">Date <span class="req">*</span></label><input type="date" id="cr-date"></div>
+            <div class="g3">
+              <div class="field"><label class="label">OT clôturés</label><input type="number" id="cr-closed" min="0" placeholder="0"></div>
+              <div class="field"><label class="label">OT en cours</label><input type="number" id="cr-open" min="0" placeholder="0"></div>
+              <div class="field"><label class="label">OT bloqués</label><input type="number" id="cr-waiting" min="0" placeholder="0"></div>
+            </div>
+            <div class="field"><label class="label">Ce que j'ai fait aujourd'hui</label><textarea id="cr-done" placeholder="Interventions réalisées..."></textarea></div>
+            <div class="field"><label class="label">Ce que je vais faire demain</label><textarea id="cr-todo" placeholder="Prévisions pour le lendemain..."></textarea></div>
+            <div class="field"><label class="label">Besoin en pièces</label><input type="text" id="cr-need" placeholder="Ex: Courroie COV-22X, qty 2"></div>
+            <div class="field"><label class="label">Blocage signalé</label><input type="text" id="cr-block" placeholder="Ex: Zone inaccessible..."></div>
+            <div class="field"><label class="label">Commentaires</label><textarea id="cr-comment" style="min-height:56px" placeholder="Observations libres..."></textarea></div>
+            <div class="btn-row">
+              <button class="btn" onclick="clearCR()">Effacer</button>
+              <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer</button>
+            </div>
           </div>
-          <div class="g3">
-            <div class="field"><label class="label">OT clôturés</label><input type="number" id="cr-closed" min="0" placeholder="0"></div>
-            <div class="field"><label class="label">OT en cours</label><input type="number" id="cr-open" min="0" placeholder="0"></div>
-            <div class="field"><label class="label">OT bloqués</label><input type="number" id="cr-waiting" min="0" placeholder="0"></div>
-          </div>
-          <div class="field"><label class="label">Ce que j'ai fait aujourd'hui</label><textarea id="cr-done" placeholder="Interventions réalisées..."></textarea></div>
-          <div class="field"><label class="label">Ce que je vais faire demain</label><textarea id="cr-todo" placeholder="Prévisions pour le lendemain..."></textarea></div>
-          <div class="field"><label class="label">Besoin en pièces / matériaux</label><input type="text" id="cr-need" placeholder="Ex: Courroie COV-22X, qty 2"></div>
-          <div class="field"><label class="label">Blocage signalé</label><input type="text" id="cr-block" placeholder="Ex: Zone inaccessible, attente validation..."></div>
-          <div class="field"><label class="label">Commentaires</label><textarea id="cr-comment" style="min-height:56px" placeholder="Observations libres..."></textarea></div>
-          <div class="btn-row">
-            <button class="btn" onclick="clearCR()">Effacer</button>
-            <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer le compte rendu</button>
-          </div>
-        </div>
-        <!-- MES CR PRÉCÉDENTS -->
-        <div style="margin-top:4px">
           <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes comptes rendus récents</div>
           <div id="my-cr-list"></div>
         </div>
-        </div><!-- /cr-form-jour -->
-
         <!-- CR PAR AFFECTATION -->
-        <div id="cr-form-ot" style="display:none">
-        <div class="card">
-          <div class="card-hd">🔧 Compte rendu par affectation</div>
-          <div class="field">
-            <label class="label">Sélectionner une affectation <span class="req">*</span></label>
-            <select id="cr-ot-select" onchange="loadCROTDetails()">
-              <option value="">-- Choisir une affectation --</option>
-            </select>
-          </div>
-          <div id="cr-ot-detail" style="display:none">
-            <div class="field"><label class="label">Ce qui a été réalisé</label><textarea id="cr-ot-realise" placeholder="Décrivez les travaux effectués sur cet OT..."></textarea></div>
-            <div class="field"><label class="label">Résultat / État final</label>
-              <select id="cr-ot-resultat">
-                <option value="Terminé">✅ Terminé — OT clôturé</option>
-                <option value="En cours">⏳ En cours — travaux partiels</option>
-                <option value="Bloqué">🔴 Bloqué — intervention impossible</option>
-                <option value="En attente pièce">📦 En attente de pièce</option>
+        <div id="cr-ot-wrap" style="display:none">
+          <div class="card">
+            <div class="card-hd">🔧 Compte rendu par affectation</div>
+            <div class="field">
+              <label class="label">Votre affectation <span class="req">*</span></label>
+              <select id="cr-af-select" onchange="onSelectAF()">
+                <option value="">-- Sélectionner une affectation --</option>
               </select>
             </div>
-            <div class="field"><label class="label">Temps passé (heures)</label><input type="number" id="cr-ot-temps" min="0" step="0.5" placeholder="Ex: 2.5"></div>
-            <div class="field"><label class="label">Pièces utilisées</label><input type="text" id="cr-ot-pieces" placeholder="Ex: Roulement 6205-2RS x2, Joint torique Ø45 x1"></div>
-            <div class="field"><label class="label">Observations / Anomalies détectées</label><textarea id="cr-ot-obs" placeholder="Anomalies détectées, risques, recommandations..." style="min-height:56px"></textarea></div>
-            <div class="btn-row">
-              <button class="btn btn-primary" onclick="saveCROT()">💾 Enregistrer le CR OT</button>
+            <div id="cr-af-detail" style="display:none">
+              <div class="field"><label class="label">Ce qui a été réalisé</label><textarea id="cr-af-realise" placeholder="Décrivez les travaux effectués..."></textarea></div>
+              <div class="field"><label class="label">Résultat</label>
+                <select id="cr-af-statut">
+                  <option value="Terminé">✅ Terminé — OT clôturé</option>
+                  <option value="En cours">⏳ En cours — travaux partiels</option>
+                  <option value="À faire">🔴 Bloqué — intervention impossible</option>
+                </select>
+              </div>
+              <div class="g2">
+                <div class="field"><label class="label">Temps passé (h)</label><input type="number" id="cr-af-temps" min="0" step="0.5" placeholder="2.5"></div>
+                <div class="field"><label class="label">Pièces utilisées</label><input type="text" id="cr-af-pieces" placeholder="Roulement 6205 x2..."></div>
+              </div>
+              <div class="field"><label class="label">Observations</label><textarea id="cr-af-obs" style="min-height:56px" placeholder="Anomalies, risques..."></textarea></div>
+              <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveCRAF()">💾 Enregistrer le CR OT</button>
+              </div>
             </div>
           </div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes CR OT récents</div>
+          <div id="my-craf-list"></div>
         </div>
-        <!-- MES CR OT PRÉCÉDENTS -->
-        <div style="margin-top:4px">
-          <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes CR par affectation récents</div>
-          <div id="my-crot-list"></div>
-        </div>
-        </div><!-- /cr-form-ot -->
-
       </div>
 
       <!-- ── AFFECTATIONS ── -->
@@ -1001,7 +986,7 @@ async function saveAF(){
     toast('Affectation créée ✓');
     ['af-task','af-ot','af-atelier','af-note'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('af-deadline').value='';
-    loadAF();
+    loadAF(); renderGantt();
     if(currentTab==='gantt') loadGantt();
   }catch(e){toast('Erreur',false);}
 }
@@ -1386,6 +1371,181 @@ function urlB64(b64){
   const raw=atob(b);const arr=new Uint8Array(raw.length);
   for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
   return arr;
+}
+
+
+// ── CR TYPE SWITCH ────────────────────────────────────────────────────────────
+function setCRType(type){
+  const isJour = type === 'jour';
+  document.getElementById('cr-jour-wrap').style.display = isJour ? 'block' : 'none';
+  document.getElementById('cr-ot-wrap').style.display   = isJour ? 'none'  : 'block';
+  const bJ = document.getElementById('btn-cr-jour');
+  const bO = document.getElementById('btn-cr-ot');
+  bJ.className = 'btn ' + (isJour ? 'btn-primary' : '');
+  bJ.style.cssText = 'flex:1;justify-content:center';
+  bO.className = 'btn ' + (!isJour ? 'btn-primary' : '');
+  bO.style.cssText = 'flex:1;justify-content:center';
+  if(!isJour) loadMyAFsForCR();
+}
+
+async function loadMyAFsForCR(){
+  try{
+    const items = await api('GET','/api/affectations') || [];
+    const pending = items.filter(a => a.statut !== 'Terminé').sort((a,b)=>b.date.localeCompare(a.date));
+    const sel = document.getElementById('cr-af-select');
+    sel.innerHTML = '<option value="">-- Sélectionner --</option>';
+    pending.forEach(a => {
+      const lbl = (a.ot?a.ot+' — ':'')+(a.tache.length>40?a.tache.slice(0,38)+'…':a.tache)+' ('+a.date+')';
+      sel.innerHTML += `<option value="${a.id}">${lbl}</option>`;
+    });
+    if(!pending.length) sel.innerHTML = '<option value="">Aucune affectation en cours</option>';
+    document.getElementById('cr-af-detail').style.display = 'none';
+  }catch(e){ console.error(e); }
+}
+
+function onSelectAF(){
+  const val = document.getElementById('cr-af-select').value;
+  document.getElementById('cr-af-detail').style.display = val ? 'block' : 'none';
+  if(val){
+    ['cr-af-realise','cr-af-pieces','cr-af-obs'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cr-af-temps').value='';
+    document.getElementById('cr-af-statut').value='Terminé';
+  }
+}
+
+async function saveCRAF(){
+  const afId = document.getElementById('cr-af-select').value;
+  if(!afId){ toast('Sélectionnez une affectation',false); return; }
+  const realise = document.getElementById('cr-af-realise').value.trim();
+  const statut  = document.getElementById('cr-af-statut').value;
+  const temps   = document.getElementById('cr-af-temps').value;
+  const pieces  = document.getElementById('cr-af-pieces').value.trim();
+  const obs     = document.getElementById('cr-af-obs').value.trim();
+  let cr = realise;
+  if(pieces) cr += '\nPièces : '+pieces;
+  if(temps)  cr += '\nTemps : '+temps+'h';
+  if(obs)    cr += '\nObs : '+obs;
+  try{
+    await api('PUT','/api/affectations/'+afId,{statut, cr_ot:cr});
+    toast('CR OT enregistré ✓');
+    document.getElementById('cr-af-select').value='';
+    document.getElementById('cr-af-detail').style.display='none';
+    loadMyAFsForCR(); loadMyCRAF(); updateBadge(); renderGantt();
+  }catch(e){ toast('Erreur',false); }
+}
+
+async function loadMyCRAF(){
+  try{
+    const items = await api('GET','/api/affectations')||[];
+    const withCR = items.filter(a=>a.cr_ot).sort((a,b)=>b.date.localeCompare(a.date));
+    const list = document.getElementById('my-craf-list');
+    if(!list) return;
+    if(!withCR.length){ list.innerHTML='<div class="empty"><p>Aucun CR OT enregistré</p></div>'; return; }
+    list.innerHTML = withCR.slice(0,5).map(a=>`
+      <div style="background:var(--s2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:8px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-weight:600">${a.ot?a.ot+' — ':''}${a.tache.length>35?a.tache.slice(0,33)+'…':a.tache}</span>
+          <span class="badge ${a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':'bo'}">${a.statut}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.5">${a.cr_ot}</div>
+      </div>`).join('');
+  }catch{}
+}
+
+// ── GANTT ─────────────────────────────────────────────────────────────────────
+let gStart = null;
+
+function gWeekStart(d){
+  const dt=new Date(d); dt.setHours(0,0,0,0);
+  const day=dt.getDay();
+  dt.setDate(dt.getDate()-(day===0?6:day-1));
+  return dt;
+}
+function gToday(){ gStart=gWeekStart(new Date()); renderGantt(); }
+function gPrev(){  const d=new Date(gStart); d.setDate(d.getDate()-7); gStart=d; renderGantt(); }
+function gNext(){  const d=new Date(gStart); d.setDate(d.getDate()+7); gStart=d; renderGantt(); }
+function gFmt(d){ return d.toISOString().slice(0,10); }
+
+async function renderGantt(){
+  if(!gStart) gStart=gWeekStart(new Date());
+  const wrap=document.getElementById('g-wrap');
+  if(!wrap) return;
+  wrap.innerHTML='<div class="empty"><p>Chargement...</p></div>';
+
+  const days=[];
+  for(let i=0;i<7;i++){ const d=new Date(gStart); d.setDate(d.getDate()+i); days.push(d); }
+  const todayStr=gFmt(new Date());
+  const MN=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const d0=days[0],d6=days[6];
+  const periodLbl=d0.getMonth()===d6.getMonth()
+    ?MN[d0.getMonth()]+' '+d0.getFullYear()+' — du '+d0.getDate()+' au '+d6.getDate()
+    :d0.getDate()+' '+MN[d0.getMonth()]+' — '+d6.getDate()+' '+MN[d6.getMonth()]+' '+d6.getFullYear();
+  document.getElementById('g-period').textContent=periodLbl;
+
+  try{
+    const from=gFmt(days[0]), to=gFmt(days[6]);
+    const allAfs=await api('GET','/api/affectations')||[];
+    const weekAfs=allAfs.filter(a=>{
+      const dl=a.deadline||a.date;
+      return a.date<=to && dl>=from;
+    });
+    const users=ME?.role==='responsable'
+      ?(await api('GET','/api/users')||[]).filter(u=>u.role==='technicien')
+      :[{id:ME?.id,nom:ME?.nom}];
+
+    const TW=150;
+    let h=`<div class="gantt-wrap">`;
+    h+=`<div class="gantt-hdr" style="display:grid;grid-template-columns:${TW}px 1fr">
+      <div class="gantt-hdr-tech">Technicien</div>
+      <div class="gantt-hdr-days">`;
+    const DN=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    days.forEach(d=>{
+      const isT=gFmt(d)===todayStr;
+      h+=`<div class="gantt-day-hd${isT?' gtoday':''}">${DN[d.getDay()]}<br><strong>${d.getDate()}</strong></div>`;
+    });
+    h+=`</div></div><div class="gantt-body">`;
+
+    users.forEach(user=>{
+      const uAfs=weekAfs.filter(a=>String(a.user_id)===String(user.id)||a.tech_nom===user.nom);
+      const rowH=Math.max(60, uAfs.length*32+16);
+      h+=`<div class="gantt-row" style="display:grid;grid-template-columns:${TW}px 1fr;min-height:${rowH}px">
+        <div class="gantt-tech" style="min-height:${rowH}px">
+          <span>${user.nom.split(' ')[0]}</span>
+          <span style="font-size:10px;color:var(--text3);font-weight:400">${user.nom.split(' ').slice(1).join(' ')}</span>
+        </div>
+        <div class="gantt-cells" style="min-height:${rowH}px">`;
+      days.forEach(d=>{
+        const isT=gFmt(d)===todayStr,isWE=d.getDay()===0||d.getDay()===6;
+        h+=`<div class="gantt-col${isT?' gtoday':''}${isWE?' gwe':''}"></div>`;
+      });
+      uAfs.forEach((af,idx)=>{
+        const afS=new Date(af.date+'T12:00:00');
+        const afE=af.deadline?new Date(af.deadline+'T12:00:00'):afS;
+        const barS=afS<days[0]?days[0]:afS;
+        const barE=afE>days[6]?days[6]:afE;
+        let cS=days.findIndex(d=>gFmt(d)===gFmt(barS));
+        let cE=days.findIndex(d=>gFmt(d)===gFmt(barE));
+        if(cS<0)cS=0; if(cE<0)cE=6;
+        const span=Math.max(1,cE-cS+1);
+        const pct=100/7;
+        const left=(cS*pct+0.3).toFixed(2);
+        const width=(span*pct-0.6).toFixed(2);
+        const top=8+idx*32;
+        const prio=(af.priorite||'Moyenne').toLowerCase();
+        const done=af.statut==='Terminé';
+        const lbl=af.tache.length>20?af.tache.slice(0,18)+'…':af.tache;
+        const info=af.tache+'\nDu: '+af.date+'\nDeadline: '+(af.deadline||'—')+'\nStatut: '+af.statut+'\nPriorité: '+af.priorite+(af.atelier?'\nAtelier: '+af.atelier:'');
+        h+=`<div class="gantt-bar prio-${prio}${done?' done':''}" style="left:${left}%;width:${width}%;top:${top}px" title="${info}" onclick="alert(this.title)">${done?'✓ ':''}${lbl}</div>`;
+      });
+      h+=`</div></div>`;
+    });
+    if(!users.length) h+=`<div class="gantt-empty">Aucun technicien</div>`;
+    h+=`</div></div>`;
+    wrap.innerHTML=h;
+  }catch(e){
+    console.error(e);
+    wrap.innerHTML=`<div class="gantt-empty">Erreur: ${e.message}</div>`;
+  }
 }
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
