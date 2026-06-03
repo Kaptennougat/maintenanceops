@@ -199,6 +199,34 @@ tbody tr:hover td{background:var(--s2)}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:20px}
 .modal-close{float:right;background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-top:-4px}
 
+
+/* GANTT */
+.gantt-wrap{min-width:700px}
+.gantt-header{display:grid;background:var(--s2);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border);border-bottom:none}
+.gantt-header-tech{padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;border-right:1px solid var(--border)}
+.gantt-header-days{display:flex;flex:1}
+.gantt-day-hd{flex:1;text-align:center;padding:10px 4px;font-size:11px;font-weight:600;color:var(--text2);border-right:1px solid var(--border)}
+.gantt-day-hd:last-child{border-right:none}
+.gantt-day-hd.today{color:var(--accent);font-weight:700}
+.gantt-body{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);overflow:hidden}
+.gantt-row{display:grid;border-bottom:1px solid var(--border)}
+.gantt-row:last-child{border-bottom:none}
+.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:12px;min-height:60px}
+.gantt-days-cell{display:flex;position:relative;background:var(--s1)}
+.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:60px;position:relative}
+.gantt-day-col:last-child{border-right:none}
+.gantt-day-col.today{background:var(--adim)}
+.gantt-day-col.weekend{background:rgba(255,255,255,.02)}
+.gantt-tasks{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.gantt-bar{position:absolute;height:24px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:600;color:#fff;cursor:pointer;pointer-events:all;transition:filter .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.gantt-bar:hover{filter:brightness(1.2);z-index:10}
+.gantt-bar.haute{background:var(--red)}
+.gantt-bar.moyenne{background:var(--orange)}
+.gantt-bar.basse{background:var(--green)}
+.gantt-bar.termine{opacity:.5}
+.gantt-empty{text-align:center;padding:32px;color:var(--text3);font-size:13px;border:1px solid var(--border);border-radius:var(--r)}
+.gantt-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:5;pointer-events:none}
+
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -274,6 +302,10 @@ tbody tr:hover td{background:var(--s2)}
       <button class="nav-item" id="nav-rapport" onclick="showTab('rapport')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         Rapports
+      </button>
+      <button class="nav-item" id="nav-gantt" onclick="showTab('gantt')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="3" rx="1"/><rect x="3" y="10" width="12" height="3" rx="1"/><rect x="3" y="16" width="15" height="3" rx="1"/></svg>
+        Planning Gantt
       </button>
     </div>
 
@@ -491,6 +523,30 @@ tbody tr:hover td{background:var(--s2)}
         </div>
       </div>
 
+      <!-- ── GANTT ── -->
+      <div class="tab" id="tab-gantt">
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-sm" onclick="ganttPrev()">← Préc.</button>
+              <span id="gantt-period" style="font-weight:700;font-size:14px;min-width:200px;text-align:center"></span>
+              <button class="btn btn-sm" onclick="ganttNext()">Suiv. →</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-sm btn-primary" onclick="ganttToday()">Aujourd'hui</button>
+              <div style="display:flex;gap:6px;font-size:11px;align-items:center">
+                <span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px"></span>Haute
+                <span style="display:inline-block;width:10px;height:10px;background:var(--orange);border-radius:2px"></span>Moyenne
+                <span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px"></span>Basse
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <div id="gantt-container"></div>
+        </div>
+      </div>
+
       <!-- ── RAPPORTS ── -->
       <div class="tab" id="tab-rapport">
         <div class="card">
@@ -662,7 +718,7 @@ function showTab(t){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t)?.classList.add('active');
-  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',rapport:'Rapports'};
+  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',rapport:'Rapports',gantt:'Planning Gantt'};
   document.getElementById('page-title').textContent=titles[t]||t;
   refreshCurrent();
 }
@@ -673,6 +729,7 @@ function refreshCurrent(){
   if(currentTab==='affectations'){ loadAF(); updateBadge(); }
   if(currentTab==='stock') loadPieces();
   if(currentTab==='knowledge') loadEquipements();
+  if(currentTab==='gantt') loadGantt();
 }
 
 // ── VUE ENSEMBLE ─────────────────────────────────────────────────────────────
@@ -1218,6 +1275,178 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     if(window.innerWidth <= 768) closeSidebar();
   });
 });
+
+// ── PLANNING GANTT ───────────────────────────────────────────────────────────
+let ganttStart = null;
+
+function ganttWeekStart(d){
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = dt.getDate() - day + (day===0?-6:1);
+  dt.setDate(diff);
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+
+function ganttToday(){
+  ganttStart = ganttWeekStart(new Date());
+  renderGantt();
+}
+
+function ganttPrev(){
+  const d = new Date(ganttStart);
+  d.setDate(d.getDate()-7);
+  ganttStart = d;
+  renderGantt();
+}
+
+function ganttNext(){
+  const d = new Date(ganttStart);
+  d.setDate(d.getDate()+7);
+  ganttStart = d;
+  renderGantt();
+}
+
+function fmtDate(d){
+  return d.toISOString().slice(0,10);
+}
+
+function dayLabel(d){
+  const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  return days[d.getDay()]+'<br>'+d.getDate();
+}
+
+function monthLabel(d){
+  const months=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  return months[d.getMonth()]+' '+d.getFullYear();
+}
+
+async function loadGantt(){
+  if(!ganttStart) ganttStart = ganttWeekStart(new Date());
+  renderGantt();
+}
+
+async function renderGantt(){
+  const container = document.getElementById('gantt-container');
+  if(!container) return;
+  container.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
+
+  const endDate = new Date(ganttStart);
+  endDate.setDate(endDate.getDate()+6);
+
+  // Update period label
+  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+  const startM = months[ganttStart.getMonth()];
+  const endM   = months[endDate.getMonth()];
+  const periodLabel = ganttStart.getMonth()===endDate.getMonth()
+    ? `${startM} ${ganttStart.getFullYear()} — Semaine du ${ganttStart.getDate()} au ${endDate.getDate()}`
+    : `${ganttStart.getDate()} ${startM} — ${endDate.getDate()} ${endM} ${endDate.getFullYear()}`;
+  document.getElementById('gantt-period').textContent = periodLabel;
+
+  try {
+    const from = fmtDate(ganttStart);
+    const to   = fmtDate(endDate);
+    const afs  = await api('GET', `/api/affectations?from=${from}&to=${to}`) || [];
+    const users = ME?.role==='responsable' ? (await api('GET','/api/users')||[]).filter(u=>u.role==='technicien') : [{id:ME?.id,nom:ME?.nom}];
+
+    // Days array
+    const days = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(ganttStart);
+      d.setDate(d.getDate()+i);
+      days.push(d);
+    }
+
+    const todayStr = fmtDate(new Date());
+    const TECH_W = 150;
+    const totalCols = 7;
+
+    let html = `<div class="gantt-wrap">`;
+
+    // Header
+    html += `<div class="gantt-header" style="grid-template-columns:${TECH_W}px 1fr">
+      <div class="gantt-header-tech">Technicien</div>
+      <div class="gantt-header-days">`;
+    days.forEach(d => {
+      const isToday = fmtDate(d)===todayStr;
+      const isWE = d.getDay()===0||d.getDay()===6;
+      html += `<div class="gantt-day-hd${isToday?' today':''}${isWE?' weekend':''}">${dayLabel(d)}</div>`;
+    });
+    html += `</div></div>`;
+
+    // Body
+    html += `<div class="gantt-body">`;
+
+    if(!users.length){
+      html += `<div class="gantt-empty">Aucun technicien</div>`;
+    } else {
+      users.forEach(user => {
+        const userAfs = afs.filter(a => a.user_id===user.id || a.tech_nom===user.nom);
+        html += `<div class="gantt-row" style="grid-template-columns:${TECH_W}px 1fr">
+          <div class="gantt-tech-cell">${user.nom.split(' ')[0]}<br><span style="font-size:10px;color:var(--text3);font-weight:400">${user.nom.split(' ').slice(1).join(' ')}</span></div>
+          <div class="gantt-days-cell">`;
+
+        // Day columns
+        days.forEach(d => {
+          const isToday = fmtDate(d)===todayStr;
+          const isWE = d.getDay()===0||d.getDay()===6;
+          html += `<div class="gantt-day-col${isToday?' today':''}${isWE?' weekend':''}"></div>`;
+        });
+
+        // Bars for affectations
+        html += `<div class="gantt-tasks" style="display:flex;flex-direction:column;padding:6px 0;gap:4px;position:absolute;top:0;left:0;right:0">`;
+
+        userAfs.forEach((af,idx) => {
+          // Find which day column this af belongs to
+          const afDate = af.date;
+          const dayIdx = days.findIndex(d => fmtDate(d)===afDate);
+          if(dayIdx < 0) return;
+
+          // Calculate width: if deadline within week, span to deadline, else single day
+          let spanDays = 1;
+          if(af.deadline){
+            const dlDate = new Date(af.deadline+'T12:00:00');
+            const endLimit = endDate;
+            const effectiveEnd = dlDate <= endLimit ? dlDate : endLimit;
+            const startD = days[dayIdx];
+            const diffMs = effectiveEnd - startD;
+            spanDays = Math.max(1, Math.ceil(diffMs/86400000)+1);
+            spanDays = Math.min(spanDays, 7-dayIdx);
+          }
+
+          const pct = 100/7;
+          const left = (dayIdx * pct).toFixed(2);
+          const width = (spanDays * pct - 0.5).toFixed(2);
+          const prio = (af.priorite||'moyenne').toLowerCase();
+          const done = af.statut==='Terminé';
+          const label = af.tache.length>30 ? af.tache.slice(0,28)+'…' : af.tache;
+          const top = 6 + idx * 30;
+
+          html += `<div class="gantt-bar ${prio}${done?' termine':''}"
+            style="left:${left}%;width:${width}%;top:${top}px"
+            title="${af.tache} — ${af.statut}${af.deadline?' — Deadline: '+af.deadline:''}"
+            onclick="showGanttDetail(${JSON.stringify(af).replace(/"/g,'&quot;')})">
+            ${done?'✓ ':''}${label}
+          </div>`;
+        });
+
+        html += `</div></div></div>`;
+      });
+    }
+
+    html += `</div></div>`;
+    container.innerHTML = html;
+
+  } catch(e){
+    container.innerHTML = `<div class="gantt-empty">Erreur de chargement</div>`;
+  }
+}
+
+function showGanttDetail(af){
+  const prio = af.priorite||'Moyenne';
+  const msg = `📋 ${af.tache}\n\nTechnicien : ${af.tech_nom||af.nom||'—'}\nDate : ${af.date}\nDeadline : ${af.deadline||'Aucune'}\nPriorité : ${prio}\nStatut : ${af.statut}\nOT : ${af.ot||'—'}\nAtelier : ${af.atelier||'—'}${af.note_resp?'\nInstructions : '+af.note_resp:''}`;
+  alert(msg);
+}
 
 // ── THEME ────────────────────────────────────────────────────────────────────
 function toggleTheme(){
