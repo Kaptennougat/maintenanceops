@@ -560,24 +560,22 @@ tbody tr:hover td{background:var(--s2)}
       <div class="tab" id="tab-gantt">
         <div class="card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <button class="btn btn-sm" onclick="ganttPrev()">← Préc.</button>
-              <span id="gantt-period" style="font-weight:700;font-size:14px;min-width:200px;text-align:center"></span>
-              <button class="btn btn-sm" onclick="ganttNext()">Suiv. →</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-sm" onclick="gPrev()">← Préc.</button>
+              <span id="g-period" style="font-weight:700;font-size:14px;min-width:200px;text-align:center">—</span>
+              <button class="btn btn-sm" onclick="gNext()">Suiv. →</button>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-sm btn-primary" onclick="ganttToday()">Aujourd'hui</button>
-              <div style="display:flex;gap:6px;font-size:11px;align-items:center">
-                <span style="display:inline-block;width:10px;height:10px;background:var(--red);border-radius:2px"></span>Haute
-                <span style="display:inline-block;width:10px;height:10px;background:var(--orange);border-radius:2px"></span>Moyenne
-                <span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px"></span>Basse
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn btn-sm btn-primary" onclick="gToday()">Aujourd'hui</button>
+              <div style="display:flex;gap:8px;font-size:11px;align-items:center">
+                <span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block"></span>Haute
+                <span style="width:10px;height:10px;background:var(--orange);border-radius:2px;display:inline-block"></span>Moyenne
+                <span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span>Basse
               </div>
             </div>
           </div>
         </div>
-        <div style="overflow-x:auto">
-          <div id="gantt-container"></div>
-        </div>
+        <div style="overflow-x:auto"><div id="g-wrap"></div></div>
       </div>
 
       <!-- ── RAPPORTS ── -->
@@ -1692,125 +1690,6 @@ async function loadGantt(){
   renderGantt();
 }
 
-async function renderGantt(){
-  const container = document.getElementById('gantt-container');
-  if(!container) return;
-  container.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
-
-  const endDate = new Date(ganttStart);
-  endDate.setDate(endDate.getDate()+6);
-
-  // Update period label
-  const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const startM = months[ganttStart.getMonth()];
-  const endM   = months[endDate.getMonth()];
-  const periodLabel = ganttStart.getMonth()===endDate.getMonth()
-    ? `${startM} ${ganttStart.getFullYear()} — Semaine du ${ganttStart.getDate()} au ${endDate.getDate()}`
-    : `${ganttStart.getDate()} ${startM} — ${endDate.getDate()} ${endM} ${endDate.getFullYear()}`;
-  document.getElementById('gantt-period').textContent = periodLabel;
-
-  try {
-    const from = fmtDate(ganttStart);
-    const to   = fmtDate(endDate);
-    const afs  = await api('GET', `/api/affectations?from=${from}&to=${to}`) || [];
-    const users = ME?.role==='responsable' ? (await api('GET','/api/users')||[]).filter(u=>u.role==='technicien') : [{id:ME?.id,nom:ME?.nom}];
-
-    // Days array
-    const days = [];
-    for(let i=0;i<7;i++){
-      const d = new Date(ganttStart);
-      d.setDate(d.getDate()+i);
-      days.push(d);
-    }
-
-    const todayStr = fmtDate(new Date());
-    const TECH_W = 150;
-    const totalCols = 7;
-
-    let html = `<div class="gantt-wrap">`;
-
-    // Header
-    html += `<div class="gantt-header" style="grid-template-columns:${TECH_W}px 1fr">
-      <div class="gantt-header-tech">Technicien</div>
-      <div class="gantt-header-days">`;
-    days.forEach(d => {
-      const isToday = fmtDate(d)===todayStr;
-      const isWE = d.getDay()===0||d.getDay()===6;
-      html += `<div class="gantt-day-hd${isToday?' today':''}${isWE?' weekend':''}">${dayLabel(d)}</div>`;
-    });
-    html += `</div></div>`;
-
-    // Body
-    html += `<div class="gantt-body">`;
-
-    if(!users.length){
-      html += `<div class="gantt-empty">Aucun technicien</div>`;
-    } else {
-      users.forEach(user => {
-        const userAfs = afs.filter(a => String(a.user_id)===String(user.id) || a.tech_nom===user.nom);
-        html += `<div class="gantt-row" style="grid-template-columns:${TECH_W}px 1fr">
-          <div class="gantt-tech-cell">${user.nom.split(' ')[0]}<br><span style="font-size:10px;color:var(--text3);font-weight:400">${user.nom.split(' ').slice(1).join(' ')}</span></div>
-          <div class="gantt-days-cell">`;
-
-        // Day columns
-        days.forEach(d => {
-          const isToday = fmtDate(d)===todayStr;
-          const isWE = d.getDay()===0||d.getDay()===6;
-          html += `<div class="gantt-day-col${isToday?' today':''}${isWE?' weekend':''}"></div>`;
-        });
-
-        // Bars for affectations
-        html += `<div class="gantt-tasks" style="display:flex;flex-direction:column;padding:6px 0;gap:4px;position:absolute;top:0;left:0;right:0">`;
-
-        userAfs.forEach((af,idx) => {
-          // Bar starts at max(af.date, weekStart)
-          // Bar ends   at min(af.deadline || af.date, weekEnd)
-          const afStart    = new Date(af.date+'T12:00:00');
-          const afDeadline = af.deadline ? new Date(af.deadline+'T12:00:00') : afStart;
-          const weekEnd2   = new Date(ganttStart); weekEnd2.setDate(weekEnd2.getDate()+6);
-
-          // Skip if affectation is completely outside this week
-          if(afStart > weekEnd2 || afDeadline < ganttStart) return;
-
-          // Clamp to visible week
-          const barStart = afStart < ganttStart ? ganttStart : afStart;
-          const barEnd   = afDeadline > weekEnd2 ? weekEnd2 : afDeadline;
-
-          // Find column indices
-          const startIdx = days.findIndex(d => fmtDate(d) === fmtDate(barStart));
-          const endIdx   = days.findIndex(d => fmtDate(d) === fmtDate(barEnd));
-          
-          const colStart = startIdx >= 0 ? startIdx : 0;
-          const colEnd   = endIdx   >= 0 ? endIdx   : 6;
-          const spanDays = Math.max(1, colEnd - colStart + 1);
-
-          const pct   = 100/7;
-          const left  = (colStart * pct).toFixed(2);
-          const width = (spanDays * pct - 0.3).toFixed(2);
-          const prio  = (af.priorite||'moyenne').toLowerCase();
-          const done  = af.statut==='Terminé';
-          const label = af.tache.length>22 ? af.tache.slice(0,20)+'…' : af.tache;
-          const top   = 8 + idx * 32;
-
-          html += `<div class="gantt-bar ${prio}${done?' termine':''}"
-            style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;position:absolute"
-            title="${af.tache}\nTechnicien: ${af.tech_nom||'—'}\nDu: ${af.date}\nDeadline: ${af.deadline||'—'}\nStatut: ${af.statut}"
-            onclick="showGanttDetail(${JSON.stringify(af).replace(/"/g,'&quot;')})">
-            ${done?'✓ ':''}${label}
-          </div>`;
-        });
-
-        html += `</div></div></div>`;
-      });
-    }
-
-    html += `</div></div>`;
-    container.innerHTML = html;
-
-  } catch(e){
-    container.innerHTML = `<div class="gantt-empty">Erreur de chargement</div>`;
-  }
-}
 
 function showGanttDetail(af){
   const prio = af.priorite||'Moyenne';
