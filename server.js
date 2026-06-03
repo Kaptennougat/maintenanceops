@@ -50,7 +50,11 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie('token');
   res.json({ ok: true });
 });
-
+app.delete('/api/equipements/:id', authMiddleware, managerOnly, async (req, res) => {
+  await pool.query('DELETE FROM procedures WHERE equipement_id=$1', [req.params.id]);
+  await pool.query('DELETE FROM equipements WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+});
 app.get('/api/me', authMiddleware, (req, res) => {
   res.json(req.user);
 });
