@@ -721,6 +721,7 @@ function showTab(t){
   const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',rapport:'Rapports',gantt:'Planning Gantt'};
   document.getElementById('page-title').textContent=titles[t]||t;
   refreshCurrent();
+  if(t==='gantt') loadGantt();
 }
 
 function refreshCurrent(){
@@ -870,6 +871,7 @@ async function saveAF(){
     ['af-task','af-ot','af-atelier','af-note'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('af-deadline').value='';
     loadAF();
+    if(currentTab==='gantt') loadGantt();
   }catch(e){toast('Erreur',false);}
 }
 
@@ -936,7 +938,9 @@ function addCROT(id, existing){
 async function delAF(id){
   if(!confirm('Supprimer cette affectation ?'))return;
   await api('DELETE','/api/affectations/'+id);
-  loadAF();toast('Supprimé');
+  loadAF();
+  loadGantt();
+  toast('Supprimé');
 }
 
 async function updateBadge(){
@@ -1062,11 +1066,13 @@ async function saveMvt(){
 async function loadEquipements(){
   try{
     allEquips=await api('GET','/api/equipements')||[];
+    const isResp = ME?.role==='responsable';
     document.getElementById('equip-list').innerHTML=allEquips.length?
       allEquips.map(e=>`
-        <div class="equip-card ${selEquip?.id===e.id?'active':''}" onclick="selectEquip(${e.id})">
+        <div class="equip-card ${selEquip?.id===e.id?'active':''}" onclick="selectEquip(${e.id})" style="position:relative">
           <div class="equip-name">${e.nom}</div>
           <div class="equip-meta">${e.atelier||''} ${e.categorie?'· '+e.categorie:''}</div>
+          ${isResp?`<button class="btn btn-red btn-sm" style="position:absolute;top:8px;right:8px;padding:3px 7px;font-size:10px" onclick="event.stopPropagation();delEquip(${e.id})">🗑</button>`:''}
         </div>`).join(''):
       '<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Aucun équipement</div>';
     if(selEquip) selectEquip(selEquip.id);
@@ -1082,6 +1088,23 @@ async function saveEquip(){
     ['eq-nom','eq-atelier','eq-marque','eq-modele'].forEach(id=>document.getElementById(id).value='');
     loadEquipements();
   }catch(e){toast('Erreur',false);}
+}
+
+async function delEquip(id){
+  if(!confirm('Supprimer cet équipement et toutes ses procédures ?'))return;
+  try{
+    await api('DELETE','/api/equipements/'+id);
+    if(selEquip?.id===id){
+      selEquip=null;
+      document.getElementById('equip-detail').innerHTML=`
+        <div class="empty">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+          <p>Sélectionnez un équipement</p>
+        </div>`;
+    }
+    loadEquipements();
+    toast('Équipement supprimé');
+  }catch(e){toast('Erreur suppression',false);}
 }
 
 async function selectEquip(id){
