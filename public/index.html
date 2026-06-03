@@ -1464,78 +1464,78 @@ function gPrev(){  const d=new Date(gStart); d.setDate(d.getDate()-7); gStart=d;
 function gNext(){  const d=new Date(gStart); d.setDate(d.getDate()+7); gStart=d; renderGantt(); }
 function gFmt(d){ return d.toISOString().slice(0,10); }
 
+function showBarDetail(el){
+  const info = el.title.replace(/ \| /g, '\n');
+  toast(el.title.split(' | ')[0]);
+}
+
 async function renderGantt(){
   if(!gStart) gStart = gWeekStart(new Date());
   const wrap = document.getElementById('g-wrap');
   if(!wrap) return;
   wrap.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
 
+  // Build days array for the week
   const days = [];
   for(let i=0;i<7;i++){
-    const d = new Date(gStart);
-    d.setDate(d.getDate()+i);
-    days.push(d);
+    const d=new Date(gStart); d.setDate(d.getDate()+i); days.push(d);
   }
   const todayStr = gFmt(new Date());
   const MN = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
   const d0=days[0], d6=days[6];
-  const periodLbl = d0.getMonth()===d6.getMonth()
-    ? MN[d0.getMonth()]+' '+d0.getFullYear()+' — du '+d0.getDate()+' au '+d6.getDate()
-    : d0.getDate()+' '+MN[d0.getMonth()]+' — '+d6.getDate()+' '+MN[d6.getMonth()]+' '+d6.getFullYear();
-  document.getElementById('g-period').textContent = periodLbl;
+  document.getElementById('g-period').textContent =
+    d0.getMonth()===d6.getMonth()
+      ? MN[d0.getMonth()]+' '+d0.getFullYear()+' — du '+d0.getDate()+' au '+d6.getDate()
+      : d0.getDate()+' '+MN[d0.getMonth()]+' — '+d6.getDate()+' '+MN[d6.getMonth()]+' '+d6.getFullYear();
 
-  // Step 1: fetch affectations
+  const from = gFmt(days[0]);
+  const to   = gFmt(days[6]);
+
+  // Fetch all affectations using the same api() function as the rest of the app
   let allAfs = [];
-  try {
-    const res = await fetch('/api/affectations', {method:'GET'});
-    if(res.ok) allAfs = await res.json();
-    else throw new Error('API affectations: '+res.status+' '+res.statusText);
-  } catch(e){
-    wrap.innerHTML = '<div class="gantt-empty"><p style="color:var(--red)">⚠ '+e.message+'</p><button class="btn btn-sm btn-primary" onclick="renderGantt()" style="margin-top:12px">Réessayer</button></div>';
+  try { allAfs = (await api('GET', '/api/affectations')) || []; }
+  catch(e){
+    wrap.innerHTML = `<div class="gantt-empty"><p style="color:var(--red)">Erreur: ${e.message}</p></div>`;
     return;
   }
 
-  // Filter for this week
-  const from = gFmt(days[0]);
-  const to   = gFmt(days[6]);
+  // Filter affectations that overlap this week
   const weekAfs = allAfs.filter(a => {
     const dl = a.deadline || a.date;
     return a.date <= to && dl >= from;
   });
 
-  // Step 2: build technician list
+  // Build users list
   let users = [];
   if(ME?.role === 'responsable'){
     try {
-      const res = await fetch('/api/users', {method:'GET'});
-      if(res.ok){
-        const all = await res.json();
-        users = all.filter(u => u.role === 'technicien');
-      }
-    } catch(e){ console.warn('users fetch failed:', e); }
+      const all = (await api('GET', '/api/users')) || [];
+      users = all.filter(u => u.role === 'technicien');
+    } catch(e){ users = []; }
     // Fallback: extract from affectations
     if(!users.length){
       const seen = {};
       allAfs.forEach(a => {
-        const key = String(a.user_id);
-        if(!seen[key]){ seen[key]=true; users.push({id:a.user_id, nom:a.tech_nom||'Technicien '+key}); }
+        if(a.user_id && !seen[a.user_id]){
+          seen[a.user_id] = true;
+          users.push({id: a.user_id, nom: a.tech_nom || 'Tech '+a.user_id});
+        }
       });
     }
   } else {
     users = [{id: ME?.id, nom: ME?.nom}];
   }
 
-  if(!users.length && !allAfs.length){
-    wrap.innerHTML = '<div class="gantt-empty"><p>Aucune affectation cette semaine</p><p style="font-size:11px;color:var(--text3);margin-top:6px">Créez des affectations dans l'onglet Mes affectations</p></div>';
+  if(!users.length){
+    wrap.innerHTML = '<div class="gantt-empty"><p>Aucune affectation cette semaine</p><p style="font-size:11px;color:var(--text3);margin-top:6px">Créez des affectations pour les voir apparaître ici</p></div>';
     return;
   }
 
-  // Step 3: render
   const TW = 160;
   const DN = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   let h = '<div class="gantt-wrap">';
 
-  // Header
+  // Header row
   h += `<div class="gantt-hdr" style="display:grid;grid-template-columns:${TW}px 1fr">
     <div class="gantt-hdr-tech">Technicien</div>
     <div class="gantt-hdr-days">`;
@@ -1545,24 +1545,28 @@ async function renderGantt(){
   });
   h += '</div></div><div class="gantt-body">';
 
-  // Rows
+  // One row per technician
   users.forEach(user => {
-    const uAfs = weekAfs.filter(a => String(a.user_id)===String(user.id) || a.tech_nom===user.nom);
+    const uAfs = weekAfs.filter(a =>
+      String(a.user_id) === String(user.id) || a.tech_nom === user.nom
+    );
     const rowH = Math.max(64, uAfs.length * 32 + 20);
 
     h += `<div class="gantt-row" style="display:grid;grid-template-columns:${TW}px 1fr;min-height:${rowH}px">
       <div class="gantt-tech" style="min-height:${rowH}px">
-        <span style="font-weight:600;font-size:12px">${user.nom.split(' ')[0]}</span>
+        <span style="font-weight:600">${user.nom.split(' ')[0]}</span>
         <span style="font-size:10px;color:var(--text3)">${user.nom.split(' ').slice(1).join(' ')}</span>
       </div>
-      <div class="gantt-cells" style="position:relative;min-height:${rowH}px;display:flex">`;
+      <div class="gantt-cells" style="position:relative;display:flex;min-height:${rowH}px">`;
 
+    // Background columns for each day
     days.forEach(d => {
       const isT  = gFmt(d) === todayStr;
       const isWE = d.getDay()===0 || d.getDay()===6;
       h += `<div class="gantt-col${isT?' gtoday':''}${isWE?' gwe':''}"></div>`;
     });
 
+    // Bars for each affectation
     uAfs.forEach((af, idx) => {
       const afS  = new Date(af.date+'T12:00:00');
       const afE  = af.deadline ? new Date(af.deadline+'T12:00:00') : afS;
@@ -1575,19 +1579,21 @@ async function renderGantt(){
       if(cE < 0) cE = 6;
       const span = Math.max(1, cE - cS + 1);
 
-      const pct   = 100/7;
-      const left  = (cS * pct + 0.3).toFixed(2);
-      const width = (span * pct - 0.6).toFixed(2);
+      const left  = (cS * 100/7 + 0.3).toFixed(2);
+      const width = (span * 100/7 - 0.6).toFixed(2);
       const top   = 8 + idx * 32;
-      const prio  = (af.priorite||'Moyenne').toLowerCase();
+      const prio  = (af.priorite || 'Moyenne').toLowerCase();
       const done  = af.statut === 'Terminé';
       const lbl   = af.tache.length > 20 ? af.tache.slice(0,18)+'…' : af.tache;
-      const info  = af.tache+'\nDu: '+af.date+'\nDeadline: '+(af.deadline||'—')+'\nStatut: '+af.statut+'\nPriorité: '+af.priorite+(af.atelier?'\nAtelier: '+af.atelier:'');
 
+      const barId = 'bar-'+af.id;
       h += `<div class="gantt-bar prio-${prio}${done?' done':''}"
+        id="${barId}"
         style="left:${left}%;width:${width}%;top:${top}px"
-        title="${info}"
-        onclick="alert(this.title.replace(/\\n/g,'\n'))">${done?'✓ ':''}${lbl}</div>`;
+        title="${af.tache} | Du: ${af.date} | Deadline: ${af.deadline||'—'} | Statut: ${af.statut}"
+        onclick="showBarDetail(this)">
+        ${done?'✓ ':''}${lbl}
+      </div>`;
     });
 
     h += '</div></div>';
