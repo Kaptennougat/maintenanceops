@@ -211,9 +211,9 @@ tbody tr:hover td{background:var(--s2)}
 .gantt-body{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);overflow:hidden}
 .gantt-row{display:grid;border-bottom:1px solid var(--border)}
 .gantt-row:last-child{border-bottom:none}
-.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:12px;min-height:80px}
-.gantt-days-cell{display:flex;position:relative;background:var(--s1);min-height:80px}
-.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:80px;position:relative}
+.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:14px;min-height:70px}
+.gantt-days-cell{display:flex;position:relative;background:var(--s1);min-height:70px}
+.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:70px;position:relative}
 .gantt-day-col:last-child{border-right:none}
 .gantt-day-col.today{background:var(--adim)}
 .gantt-day-col.weekend{background:rgba(255,255,255,.02)}
@@ -842,12 +842,17 @@ function switchCRType(type){
 
 async function loadMyAFForCR(){
   try{
+    // Le backend filtre automatiquement par utilisateur connecté
+    // On récupère toutes ses affectations (pas de filtre date pour voir toutes les en cours)
     const items = await api('GET','/api/affectations') || [];
     const active = items.filter(a => a.statut !== 'Terminé');
     const sel = document.getElementById('cr-ot-select');
-    sel.innerHTML = '<option value="">-- Choisir une affectation --</option>';
+    sel.innerHTML = '<option value="">-- Choisir une de vos affectations --</option>';
+    // Trier par date décroissante
+    active.sort((a,b) => b.date.localeCompare(a.date));
     active.forEach(a => {
-      sel.innerHTML += `<option value="${a.id}" data-tache="${a.tache}" data-ot="${a.ot||''}" data-atelier="${a.atelier||''}">${a.date} — ${a.ot?a.ot+' — ':''}${a.tache}</option>`;
+      const label = `${a.date}${a.ot?' — '+a.ot:''} — ${a.tache.length>40?a.tache.slice(0,38)+'…':a.tache}`;
+      sel.innerHTML += `<option value="${a.id}">${label}</option>`;
     });
     if(!active.length) sel.innerHTML = '<option value="">Aucune affectation en cours</option>';
     document.getElementById('cr-ot-detail').style.display = 'none';
@@ -1546,34 +1551,38 @@ async function renderGantt(){
         html += `<div class="gantt-tasks" style="display:flex;flex-direction:column;padding:6px 0;gap:4px;position:absolute;top:0;left:0;right:0">`;
 
         userAfs.forEach((af,idx) => {
-          // Find which day column this af belongs to
-          const afDate = af.date;
-          const dayIdx = days.findIndex(d => fmtDate(d)===afDate);
-          if(dayIdx < 0) return;
+          // Bar starts at max(af.date, weekStart)
+          // Bar ends   at min(af.deadline || af.date, weekEnd)
+          const afStart    = new Date(af.date+'T12:00:00');
+          const afDeadline = af.deadline ? new Date(af.deadline+'T12:00:00') : afStart;
+          const weekEnd2   = new Date(ganttStart); weekEnd2.setDate(weekEnd2.getDate()+6);
 
-          // Calculate width: if deadline within week, span to deadline, else single day
-          let spanDays = 1;
-          if(af.deadline){
-            const dlDate = new Date(af.deadline+'T12:00:00');
-            const endLimit = endDate;
-            const effectiveEnd = dlDate <= endLimit ? dlDate : endLimit;
-            const startD = days[dayIdx];
-            const diffMs = effectiveEnd - startD;
-            spanDays = Math.max(1, Math.ceil(diffMs/86400000)+1);
-            spanDays = Math.min(spanDays, 7-dayIdx);
-          }
+          // Skip if affectation is completely outside this week
+          if(afStart > weekEnd2 || afDeadline < ganttStart) return;
 
-          const pct = 100/7;
-          const left = (dayIdx * pct).toFixed(2);
+          // Clamp to visible week
+          const barStart = afStart < ganttStart ? ganttStart : afStart;
+          const barEnd   = afDeadline > weekEnd2 ? weekEnd2 : afDeadline;
+
+          // Find column indices
+          const startIdx = days.findIndex(d => fmtDate(d) === fmtDate(barStart));
+          const endIdx   = days.findIndex(d => fmtDate(d) === fmtDate(barEnd));
+          
+          const colStart = startIdx >= 0 ? startIdx : 0;
+          const colEnd   = endIdx   >= 0 ? endIdx   : 6;
+          const spanDays = Math.max(1, colEnd - colStart + 1);
+
+          const pct   = 100/7;
+          const left  = (colStart * pct).toFixed(2);
           const width = (spanDays * pct - 0.3).toFixed(2);
-          const prio = (af.priorite||'moyenne').toLowerCase();
-          const done = af.statut==='Terminé';
-          const label = af.tache.length>25 ? af.tache.slice(0,23)+'…' : af.tache;
-          const top = 8 + idx * 32;
+          const prio  = (af.priorite||'moyenne').toLowerCase();
+          const done  = af.statut==='Terminé';
+          const label = af.tache.length>22 ? af.tache.slice(0,20)+'…' : af.tache;
+          const top   = 8 + idx * 32;
 
           html += `<div class="gantt-bar ${prio}${done?' termine':''}"
             style="left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;position:absolute"
-            title="${af.tache} — ${af.statut}${af.deadline?' — Deadline: '+af.deadline:''}"
+            title="${af.tache}\nTechnicien: ${af.tech_nom||'—'}\nDu: ${af.date}\nDeadline: ${af.deadline||'—'}\nStatut: ${af.statut}"
             onclick="showGanttDetail(${JSON.stringify(af).replace(/"/g,'&quot;')})">
             ${done?'✓ ':''}${label}
           </div>`;
