@@ -1484,14 +1484,36 @@ async function renderGantt(){
 
   try{
     const from=gFmt(days[0]), to=gFmt(days[6]);
-    const allAfs=await api('GET','/api/affectations')||[];
+
+    // Fetch all affectations (backend filters by user automatically)
+    let allAfs = [];
+    try { allAfs = await api('GET','/api/affectations') || []; } catch(e){ console.warn('afs error',e); }
+
     const weekAfs=allAfs.filter(a=>{
       const dl=a.deadline||a.date;
       return a.date<=to && dl>=from;
     });
-    const users=ME?.role==='responsable'
-      ?(await api('GET','/api/users')||[]).filter(u=>u.role==='technicien')
-      :[{id:ME?.id,nom:ME?.nom}];
+
+    // Fetch users list (responsable only)
+    let users = [];
+    if(ME?.role==='responsable'){
+      try {
+        const allUsers = await api('GET','/api/users') || [];
+        users = allUsers.filter(u=>u.role==='technicien');
+        // If no users from API, extract from affectations
+        if(!users.length && allAfs.length){
+          const seen = {};
+          allAfs.forEach(a=>{ if(a.user_id && !seen[a.user_id]){ seen[a.user_id]=true; users.push({id:a.user_id,nom:a.tech_nom||'Technicien'}); }});
+        }
+      } catch(e){
+        console.warn('users error',e);
+        // Fallback: extract unique techs from affectations
+        const seen = {};
+        allAfs.forEach(a=>{ if(a.user_id && !seen[a.user_id]){ seen[a.user_id]=true; users.push({id:a.user_id,nom:a.tech_nom||'Technicien'}); }});
+      }
+    } else {
+      users = [{id:ME?.id, nom:ME?.nom}];
+    }
 
     const TW=150;
     let h=`<div class="gantt-wrap">`;
@@ -1539,12 +1561,19 @@ async function renderGantt(){
       });
       h+=`</div></div>`;
     });
-    if(!users.length) h+=`<div class="gantt-empty">Aucun technicien</div>`;
+    if(!users.length) h+=`<div class="gantt-empty"><p>Aucun technicien trouvé</p><p style="font-size:11px;margin-top:6px;color:var(--text3)">Créez d'abord des affectations dans l'onglet Affectations</p></div>`;
+    if(users.length && !weekAfs.length) {
+      // Show grid but with empty message
+    }
     h+=`</div></div>`;
     wrap.innerHTML=h;
   }catch(e){
-    console.error(e);
-    wrap.innerHTML=`<div class="gantt-empty">Erreur: ${e.message}</div>`;
+    console.error('Gantt error:',e);
+    wrap.innerHTML=`<div class="gantt-empty">
+      <p style="color:var(--red);margin-bottom:8px">⚠ Erreur de chargement</p>
+      <p style="font-size:11px;font-family:monospace">${e.message}</p>
+      <button class="btn btn-sm btn-primary" onclick="renderGantt()" style="margin-top:12px">Réessayer</button>
+    </div>`;
   }
 }
 
