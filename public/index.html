@@ -199,34 +199,6 @@ tbody tr:hover td{background:var(--s2)}
 .modal-title{font-size:16px;font-weight:700;margin-bottom:20px}
 .modal-close{float:right;background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;margin-top:-4px}
 
-
-/* GANTT */
-.gantt-wrap{min-width:700px}
-.gantt-header{display:grid;background:var(--s2);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border);border-bottom:none}
-.gantt-header-tech{padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;border-right:1px solid var(--border)}
-.gantt-header-days{display:flex;flex:1}
-.gantt-day-hd{flex:1;text-align:center;padding:10px 4px;font-size:11px;font-weight:600;color:var(--text2);border-right:1px solid var(--border)}
-.gantt-day-hd:last-child{border-right:none}
-.gantt-day-hd.today{color:var(--accent);font-weight:700}
-.gantt-body{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);overflow:hidden}
-.gantt-row{display:grid;border-bottom:1px solid var(--border)}
-.gantt-row:last-child{border-bottom:none}
-.gantt-tech-cell{padding:10px 14px;font-size:12px;font-weight:600;border-right:1px solid var(--border);background:var(--s1);display:flex;align-items:flex-start;padding-top:14px;min-height:70px}
-.gantt-days-cell{display:flex;position:relative;background:var(--s1);min-height:70px}
-.gantt-day-col{flex:1;border-right:1px solid var(--border);min-height:70px;position:relative}
-.gantt-day-col:last-child{border-right:none}
-.gantt-day-col.today{background:var(--adim)}
-.gantt-day-col.weekend{background:rgba(255,255,255,.02)}
-.gantt-tasks{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
-.gantt-bar{position:absolute;height:24px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:10px;font-weight:600;color:#fff;cursor:pointer;pointer-events:all;transition:filter .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,.2)}
-.gantt-bar:hover{filter:brightness(1.2);z-index:10}
-.gantt-bar.haute{background:var(--red)}
-.gantt-bar.moyenne{background:var(--orange)}
-.gantt-bar.basse{background:var(--green)}
-.gantt-bar.termine{opacity:.5}
-.gantt-empty{text-align:center;padding:32px;color:var(--text3);font-size:13px;border:1px solid var(--border);border-radius:var(--r)}
-.gantt-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:5;pointer-events:none}
-
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
@@ -244,9 +216,6 @@ tbody tr:hover td{background:var(--s2)}
 .hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none}
 .overlay.show{display:block}
-
-.retard-item { border-color: rgba(240,74,74,0.3) !important; background: rgba(240,74,74,0.04) !important; }
-
 </style>
 </head>
 <body>
@@ -294,23 +263,17 @@ tbody tr:hover td{background:var(--s2)}
         Mes affectations
         <span class="nav-badge" id="badge-af">0</span>
       </button>
-
+      <button class="nav-item" id="nav-stock" onclick="showTab('stock')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        Stock pièces
+      </button>
       <button class="nav-item" id="nav-knowledge" onclick="showTab('knowledge')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
         Base de connaissances
       </button>
-      <button class="nav-item" id="nav-historique" onclick="showTab('historique')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
-        Historique
-        <span class="nav-badge" id="badge-retard">0</span>
-      </button>
       <button class="nav-item" id="nav-rapport" onclick="showTab('rapport')">
         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
         Rapports
-      </button>
-      <button class="nav-item" id="nav-gantt" onclick="showTab('gantt')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="3" rx="1"/><rect x="3" y="10" width="12" height="3" rx="1"/><rect x="3" y="16" width="15" height="3" rx="1"/></svg>
-        Planning Gantt
       </button>
     </div>
 
@@ -366,75 +329,31 @@ tbody tr:hover td{background:var(--s2)}
 
       <!-- ── COMPTE RENDU ── -->
       <div class="tab" id="tab-cr">
-        <div style="display:flex;gap:8px;margin-bottom:18px">
-          <button class="btn btn-primary" id="btn-cr-jour" onclick="setCRType('jour')" style="flex:1;justify-content:center">📅 Journalier</button>
-          <button class="btn" id="btn-cr-ot" onclick="setCRType('ot')" style="flex:1;justify-content:center">🔧 Par affectation</button>
-        </div>
-        <!-- CR JOURNALIER -->
-        <div id="cr-jour-wrap">
-          <div class="card">
-            <div class="card-hd">📅 Compte rendu journalier</div>
+        <div class="card">
+          <div class="card-hd">📅 Compte rendu journalier</div>
+          <div class="g2">
             <div class="field"><label class="label">Date <span class="req">*</span></label><input type="date" id="cr-date"></div>
-            <div class="g3">
-              <div class="field"><label class="label">OT clôturés</label><input type="number" id="cr-closed" min="0" placeholder="0"></div>
-              <div class="field"><label class="label">OT en cours</label><input type="number" id="cr-open" min="0" placeholder="0"></div>
-              <div class="field"><label class="label">OT bloqués</label><input type="number" id="cr-waiting" min="0" placeholder="0"></div>
-            </div>
-            <div class="field"><label class="label">Ce que j'ai fait aujourd'hui</label><textarea id="cr-done" placeholder="Interventions réalisées..."></textarea></div>
-            <div class="field"><label class="label">Ce que je vais faire demain</label><textarea id="cr-todo" placeholder="Prévisions pour le lendemain..."></textarea></div>
-            <div class="field"><label class="label">Besoin en pièces</label><input type="text" id="cr-need" placeholder="Ex: Courroie COV-22X, qty 2"></div>
-            <div class="field"><label class="label">Blocage signalé</label><input type="text" id="cr-block" placeholder="Ex: Zone inaccessible..."></div>
-            <div class="field"><label class="label">Commentaires</label><textarea id="cr-comment" style="min-height:56px" placeholder="Observations libres..."></textarea></div>
-
-            <!-- ── PANNES SUR MON PÉRIMÈTRE ── -->
-            <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                <label class="label" style="margin:0">🔴 Pannes sur mon périmètre</label>
-                <button type="button" class="btn btn-sm" onclick="addPanneRow()" style="font-size:11px">+ Ajouter une machine</button>
-              </div>
-              <div id="pannes-list"></div>
-            </div>
-
-            <div class="btn-row">
-              <button class="btn" onclick="clearCR()">Effacer</button>
-              <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer</button>
-            </div>
           </div>
+          <div class="g3">
+            <div class="field"><label class="label">OT clôturés</label><input type="number" id="cr-closed" min="0" placeholder="0"></div>
+            <div class="field"><label class="label">OT en cours</label><input type="number" id="cr-open" min="0" placeholder="0"></div>
+            <div class="field"><label class="label">OT bloqués</label><input type="number" id="cr-waiting" min="0" placeholder="0"></div>
+          </div>
+          <div class="field"><label class="label">Ce que j'ai fait aujourd'hui</label><textarea id="cr-done" placeholder="Interventions réalisées..."></textarea></div>
+          <div class="field"><label class="label">Ce que je vais faire demain</label><textarea id="cr-todo" placeholder="Prévisions pour le lendemain..."></textarea></div>
+          <div class="field"><label class="label">Besoin en pièces / matériaux</label><input type="text" id="cr-need" placeholder="Ex: Courroie COV-22X, qty 2"></div>
+          <div class="field"><label class="label">Blocage signalé</label><input type="text" id="cr-block" placeholder="Ex: Zone inaccessible, attente validation..."></div>
+          <div class="field"><label class="label">Commentaires</label><textarea id="cr-comment" style="min-height:56px" placeholder="Observations libres..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn" onclick="clearCR()">Effacer</button>
+            <button class="btn btn-primary" onclick="saveCR()">💾 Enregistrer le compte rendu</button>
+          </div>
+        </div>
+
+        <!-- MES CR PRÉCÉDENTS -->
+        <div style="margin-top:4px">
           <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes comptes rendus récents</div>
           <div id="my-cr-list"></div>
-        </div>
-        <!-- CR PAR AFFECTATION -->
-        <div id="cr-ot-wrap" style="display:none">
-          <div class="card">
-            <div class="card-hd">🔧 Compte rendu par affectation</div>
-            <div class="field">
-              <label class="label">Votre affectation <span class="req">*</span></label>
-              <select id="cr-af-select" onchange="onSelectAF()">
-                <option value="">-- Sélectionner une affectation --</option>
-              </select>
-            </div>
-            <div id="cr-af-detail" style="display:none">
-              <div class="field"><label class="label">Ce qui a été réalisé</label><textarea id="cr-af-realise" placeholder="Décrivez les travaux effectués..."></textarea></div>
-              <div class="field"><label class="label">État de l'affectation après intervention</label>
-                <select id="cr-af-statut">
-                  <option value="Terminé">✅ Affectation terminée — clôturée</option>
-                  <option value="En cours">⏳ Travaux en cours — à poursuivre</option>
-                  <option value="À faire">📦 En attente de pièce ou validation</option>
-                  <option value="Non réalisé">🔴 Non réalisée — intervention impossible</option>
-                </select>
-              </div>
-              <div class="g2">
-                <div class="field"><label class="label">Temps passé (h)</label><input type="number" id="cr-af-temps" min="0" step="0.5" placeholder="2.5"></div>
-                <div class="field"><label class="label">Pièces utilisées</label><input type="text" id="cr-af-pieces" placeholder="Roulement 6205 x2..."></div>
-              </div>
-              <div class="field"><label class="label">Observations</label><textarea id="cr-af-obs" style="min-height:56px" placeholder="Anomalies, risques..."></textarea></div>
-              <div class="btn-row">
-                <button class="btn btn-primary" onclick="saveCRAF()">💾 Enregistrer le CR OT</button>
-              </div>
-            </div>
-          </div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:12px">Mes CR OT récents</div>
-          <div id="my-craf-list"></div>
         </div>
       </div>
 
@@ -483,6 +402,63 @@ tbody tr:hover td{background:var(--s2)}
         <div id="af-list"><div class="empty"><p>Chargement...</p></div></div>
       </div>
 
+      <!-- ── STOCK ── -->
+      <div class="tab" id="tab-stock">
+        <div class="kpi-grid" id="stock-kpis">
+          <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Références en stock</div></div>
+          <div class="kpi"><div class="kpi-val" style="color:var(--red)">—</div><div class="kpi-lbl">Ruptures de stock</div></div>
+          <div class="kpi"><div class="kpi-val" style="color:var(--orange)">—</div><div class="kpi-lbl">Stock critique</div></div>
+          <div class="kpi"><div class="kpi-val" style="color:var(--green)">—</div><div class="kpi-lbl">Valeur totale (MAD)</div></div>
+        </div>
+
+        <!-- Alertes -->
+        <div id="stock-alerts" style="margin-bottom:16px"></div>
+
+        <!-- Ajouter pièce (responsable) -->
+        <div id="stock-form-section" style="display:none">
+          <div class="card">
+            <div class="card-hd">➕ Ajouter une pièce</div>
+            <div class="g2">
+              <div class="field"><label class="label">Référence <span class="req">*</span></label><input type="text" id="st-ref" placeholder="Ex: 6205-2RS"></div>
+              <div class="field"><label class="label">Désignation <span class="req">*</span></label><input type="text" id="st-des" placeholder="Ex: Roulement 6205-2RS SKF"></div>
+            </div>
+            <div class="g4">
+              <div class="field"><label class="label">Marque</label><input type="text" id="st-marq" placeholder="SKF"></div>
+              <div class="field"><label class="label">Catégorie</label>
+                <select id="st-cat"><option value="">--</option><option>Mécanique</option><option>Électrique</option><option>Pneumatique</option><option>Hydraulique</option><option>Lubrification</option><option>Consommable</option></select>
+              </div>
+              <div class="field"><label class="label">Stock actuel</label><input type="number" id="st-qty" min="0" placeholder="0"></div>
+              <div class="field"><label class="label">Stock minimum</label><input type="number" id="st-min" min="0" placeholder="0"></div>
+            </div>
+            <div class="g4">
+              <div class="field"><label class="label">Unité</label>
+                <select id="st-unit"><option>pcs</option><option>L</option><option>kg</option><option>m</option><option>rouleau</option></select>
+              </div>
+              <div class="field"><label class="label">Emplacement</label><input type="text" id="st-loc" placeholder="Étagère A-3"></div>
+              <div class="field"><label class="label">Fournisseur</label><input type="text" id="st-furn" placeholder="Nom fournisseur"></div>
+              <div class="field"><label class="label">Prix unitaire (MAD)</label><input type="number" id="st-prix" min="0" placeholder="0"></div>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" onclick="savePiece()">✓ Ajouter</button></div>
+          </div>
+        </div>
+
+        <!-- Table stock -->
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+          <span>📦 Stock pièces de rechange</span>
+          <button class="btn btn-sm" onclick="loadMouvements(); document.getElementById('modal-mvt').classList.add('show')">📋 Voir mouvements</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Référence</th><th>Désignation</th><th>Catégorie</th>
+              <th>Stock actuel</th><th>Min</th><th>Niveau</th>
+              <th>Emplacement</th><th>Statut</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="stock-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- ── BASE DE CONNAISSANCES ── -->
       <div class="tab" id="tab-knowledge">
         <div style="display:flex;gap:16px">
@@ -515,52 +491,6 @@ tbody tr:hover td{background:var(--s2)}
         </div>
       </div>
 
-      <!-- ── HISTORIQUE ── -->
-      <div class="tab" id="tab-historique">
-        <div class="kpi-grid" id="hist-kpis" style="margin-bottom:16px">
-          <div class="kpi"><div class="kpi-val" id="h-total">—</div><div class="kpi-lbl">Total</div></div>
-          <div class="kpi"><div class="kpi-val" id="h-done" style="color:var(--green)">—</div><div class="kpi-lbl">Terminées</div></div>
-          <div class="kpi"><div class="kpi-val" id="h-cours" style="color:var(--orange)">—</div><div class="kpi-lbl">En cours</div></div>
-          <div class="kpi"><div class="kpi-val" id="h-retard" style="color:var(--red)">—</div><div class="kpi-lbl">Deadline dépassée</div></div>
-        </div>
-        <div class="filter-bar" style="margin-bottom:14px">
-          <label>Filtre :</label>
-          <select id="hist-filter-statut" onchange="loadHistorique()" style="width:160px">
-            <option value="">Tous les statuts</option>
-            <option value="À faire">À faire</option>
-            <option value="En cours">En cours</option>
-            <option value="Terminé">Terminé</option>
-            <option value="Non réalisé">Non réalisé</option>
-            <option value="retard">⚠ Deadline dépassée</option>
-          </select>
-          <div style="flex:1"></div>
-          <button class="btn btn-sm" onclick="loadHistorique()">Actualiser</button>
-        </div>
-        <div id="hist-list"><div class="empty"><p>Chargement...</p></div></div>
-      </div>
-
-      <!-- ── GANTT ── -->
-      <div class="tab" id="tab-gantt">
-        <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn btn-sm" onclick="gPrev()">← Préc.</button>
-              <span id="g-period" style="font-weight:700;font-size:14px;min-width:200px;text-align:center">—</span>
-              <button class="btn btn-sm" onclick="gNext()">Suiv. →</button>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <button class="btn btn-sm btn-primary" onclick="gToday()">Aujourd'hui</button>
-              <div style="display:flex;gap:8px;font-size:11px;align-items:center">
-                <span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block"></span>Haute
-                <span style="width:10px;height:10px;background:var(--orange);border-radius:2px;display:inline-block"></span>Moyenne
-                <span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block"></span>Basse
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="overflow-x:auto"><div id="g-wrap"></div></div>
-      </div>
-
       <!-- ── RAPPORTS ── -->
       <div class="tab" id="tab-rapport">
         <div class="card">
@@ -587,6 +517,32 @@ tbody tr:hover td{background:var(--s2)}
     </div>
   </div>
 </div>
+</div>
+
+<!-- ── MODAL MOUVEMENT STOCK ── -->
+<div class="modal-bg" id="modal-mvt">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-close" onclick="document.getElementById('modal-mvt').classList.remove('show')">✕</button>
+    <div class="modal-title">📋 Mouvements de stock</div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-hd">Enregistrer un mouvement</div>
+      <div class="g2">
+        <div class="field"><label class="label">Pièce</label><select id="mvt-piece"></select></div>
+        <div class="field"><label class="label">Type</label>
+          <select id="mvt-type"><option value="sortie">📤 Sortie (utilisation)</option><option value="entree">📥 Entrée (réception)</option></select>
+        </div>
+      </div>
+      <div class="g3">
+        <div class="field"><label class="label">Quantité</label><input type="number" id="mvt-qty" min="0.1" step="0.1" placeholder="1"></div>
+        <div class="field"><label class="label">N° OT</label><input type="text" id="mvt-ot" placeholder="OT-001"></div>
+        <div class="field"><label class="label">Équipement</label><input type="text" id="mvt-equip" placeholder="Compresseur P2"></div>
+      </div>
+      <div class="field"><label class="label">Motif</label><input type="text" id="mvt-motif" placeholder="Remplacement, maintenance..."></div>
+      <div class="btn-row"><button class="btn btn-primary" onclick="saveMvt()">✓ Enregistrer</button></div>
+    </div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">Derniers mouvements</div>
+    <div id="mvt-list" style="max-height:280px;overflow-y:auto"></div>
+  </div>
 </div>
 
 <!-- ── MODAL CHANGER MOT DE PASSE ── -->
@@ -687,6 +643,7 @@ function initApp(){
 
   loadEnsemble();
   loadMyCR();
+  loadPieces();
   loadEquipements();
   updateBadge();
   initPush();
@@ -705,18 +662,17 @@ function showTab(t){
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('nav-'+t)?.classList.add('active');
-  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',knowledge:'Base de connaissances',historique:'Historique des affectations',rapport:'Rapports',gantt:'Planning Gantt'};
+  const titles={ensemble:'Vue ensemble',cr:'Compte rendu',affectations:'Mes affectations',stock:'Stock pièces de rechange',knowledge:'Base de connaissances',rapport:'Rapports'};
   document.getElementById('page-title').textContent=titles[t]||t;
   refreshCurrent();
-  if(t==='gantt') loadGantt();
 }
 
 function refreshCurrent(){
   if(currentTab==='ensemble') loadEnsemble();
-  if(currentTab==='cr'){ loadMyCR(); loadMyCROT(); }
+  if(currentTab==='cr') loadMyCR();
   if(currentTab==='affectations'){ loadAF(); updateBadge(); }
+  if(currentTab==='stock') loadPieces();
   if(currentTab==='knowledge') loadEquipements();
-  if(currentTab==='gantt') loadGantt();
 }
 
 // ── VUE ENSEMBLE ─────────────────────────────────────────────────────────────
@@ -755,112 +711,13 @@ function renderCR(r){
   if(r.a_faire) h+=`<div class="info-row"><div class="info-lbl">📅 Prévu demain</div><div>${r.a_faire}</div></div>`;
   if(r.blocage) h+=`<div class="alert-s alert-r"><span>⛔</span><div><b>Blocage :</b> ${r.blocage}</div></div>`;
   if(r.besoin)  h+=`<div class="alert-s alert-o"><span>📦</span><div><b>Besoin :</b> ${r.besoin}</div></div>`;
-  const commentDisplay = r.commentaire ? r.commentaire.split('\n__PANNES__:')[0] : '';
-  if(commentDisplay) h+=`<div class="info-row"><div class="info-lbl">💬 Commentaire</div><div style="color:var(--text2)">${commentDisplay}</div></div>`;
-  // Show pannes (stored in commentaire after __PANNES__:)
-  try{
-    const panneSep = (r.commentaire||'').indexOf('\n__PANNES__:');
-    const pannes = panneSep>=0 ? JSON.parse(r.commentaire.slice(panneSep+12)) : [];
-    if(pannes.length){
-      h+=`<div class="info-row"><div class="info-lbl">🔴 Pannes sur le périmètre</div>`;
-      h+=pannes.map(p=>`
-        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span style="font-weight:600">${p.machine}</span>
-          ${p.desc?`<span style="color:var(--text2)">— ${p.desc}</span>`:''}
-          <span class="badge ${p.statut==='Résolue'?'bg':'br'}" style="margin-left:auto">${p.statut==='Résolue'?'✅ Résolue':'🔴 En panne'}</span>
-        </div>`).join('');
-      h+=`</div>`;
-    }
-  }catch{}
+  if(r.commentaire) h+=`<div class="info-row"><div class="info-lbl">💬 Commentaire</div><div style="color:var(--text2)">${r.commentaire}</div></div>`;
   if(ME?.role==='responsable') h+=`<div style="text-align:right;margin-top:10px"><button class="btn btn-red btn-sm" onclick="delCR(${r.id})">🗑 Supprimer</button></div>`;
   h+='</div>';
   return h;
 }
 
 // ── COMPTE RENDU ─────────────────────────────────────────────────────────────
-// ── CR TYPE SWITCH ────────────────────────────────────────────────────────────
-let crType = 'jour';
-
-function switchCRType(type){
-  crType = type;
-  document.getElementById('cr-form-jour').style.display = type==='jour' ? 'block' : 'none';
-  document.getElementById('cr-form-ot').style.display  = type==='ot'   ? 'block' : 'none';
-  document.getElementById('cr-type-jour').className = 'btn ' + (type==='jour' ? 'btn-primary' : '');
-  document.getElementById('cr-type-jour').style.flex = '1';
-  document.getElementById('cr-type-jour').style.justifyContent = 'center';
-  document.getElementById('cr-type-ot').className  = 'btn ' + (type==='ot'   ? 'btn-primary' : '');
-  document.getElementById('cr-type-ot').style.flex = '1';
-  document.getElementById('cr-type-ot').style.justifyContent = 'center';
-  if(type==='ot') loadMyAFForCR();
-}
-
-async function loadMyAFForCR(){
-  try{
-    // Le backend filtre automatiquement par utilisateur connecté
-    // On récupère toutes ses affectations (pas de filtre date pour voir toutes les en cours)
-    const items = await api('GET','/api/affectations') || [];
-    const active = items.filter(a => a.statut !== 'Terminé');
-    const sel = document.getElementById('cr-ot-select');
-    sel.innerHTML = '<option value="">-- Choisir une de vos affectations --</option>';
-    // Trier par date décroissante
-    active.sort((a,b) => b.date.localeCompare(a.date));
-    active.forEach(a => {
-      const label = `${a.date}${a.ot?' — '+a.ot:''} — ${a.tache.length>40?a.tache.slice(0,38)+'…':a.tache}`;
-      sel.innerHTML += `<option value="${a.id}">${label}</option>`;
-    });
-    if(!active.length) sel.innerHTML = '<option value="">Aucune affectation en cours</option>';
-    document.getElementById('cr-ot-detail').style.display = 'none';
-  }catch{}
-}
-
-function loadCROTDetails(){
-  const sel = document.getElementById('cr-ot-select');
-  const val = sel.value;
-  const detail = document.getElementById('cr-ot-detail');
-  if(!val){ detail.style.display='none'; return; }
-  detail.style.display = 'block';
-  ['cr-ot-realise','cr-ot-pieces','cr-ot-obs'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('cr-ot-temps').value = '';
-  document.getElementById('cr-ot-resultat').value = 'Terminé';
-}
-
-async function saveCROT(){
-  const afId = document.getElementById('cr-ot-select').value;
-  if(!afId){ toast('Sélectionnez une affectation',false); return; }
-  const realise  = document.getElementById('cr-ot-realise').value.trim();
-  const resultat = document.getElementById('cr-ot-resultat').value;
-  const temps    = document.getElementById('cr-ot-temps').value;
-  const pieces   = document.getElementById('cr-ot-pieces').value.trim();
-  const obs      = document.getElementById('cr-ot-obs').value.trim();
-  const crText   = `${realise}${pieces?'\nPièces: '+pieces:''}${obs?'\nObs: '+obs:''}${temps?'\nTemps: '+temps+'h':''}`;
-  try{
-    await api('PUT','/api/affectations/'+afId, {statut: resultat==='Terminé'?'Terminé':resultat==='En cours'?'En cours':'À faire', cr_ot: crText});
-    toast('CR OT enregistré ✓');
-    document.getElementById('cr-ot-select').value='';
-    document.getElementById('cr-ot-detail').style.display='none';
-    loadMyAFForCR();
-    loadMyCROT();
-    updateBadge();
-  }catch(e){ toast('Erreur',false); }
-}
-
-async function loadMyCROT(){
-  try{
-    const items = await api('GET','/api/affectations')||[];
-    const withCR = items.filter(a => a.cr_ot);
-    const list = document.getElementById('my-crot-list');
-    if(!withCR.length){ list.innerHTML='<div class="empty"><p>Aucun CR OT enregistré</p></div>'; return; }
-    list.innerHTML = withCR.slice(0,5).map(a=>`
-      <div style="background:var(--s2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:8px;font-size:13px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-weight:600">${a.ot||'OT'} — ${a.tache.length>30?a.tache.slice(0,28)+'…':a.tache}</span>
-          <span class="badge ${a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':'bo'}">${a.statut}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text2);white-space:pre-wrap">${a.cr_ot}</div>
-      </div>`).join('');
-  }catch{}
-}
-
 async function loadMyCR(){
   try{
     const items=await api('GET','/api/comptes-rendus');
@@ -888,24 +745,12 @@ function loadCREdit(r){
   document.getElementById('cr-need').value     = r.besoin||'';
   document.getElementById('cr-block').value    = r.blocage||'';
   document.getElementById('cr-comment').value  = r.commentaire||'';
-  try{
-    const sep = (r.commentaire||'').indexOf('\n__PANNES__:');
-    const pArr = sep>=0 ? JSON.parse(r.commentaire.slice(sep+12)) : [];
-    loadPannes(pArr);
-    // Show commentaire without the pannes part
-    document.getElementById('cr-comment').value = sep>=0 ? r.commentaire.slice(0,sep) : (r.commentaire||'');
-  }catch{ loadPannes([]); }
-  setCRType('jour');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function saveCR(){
   const date=document.getElementById('cr-date').value;
   if(!date){toast('Date requise',false);return;}
-  const pannes = getPannes();
-  // Encode pannes into commentaire to avoid schema dependency
-  const baseComment = document.getElementById('cr-comment').value.trim();
-  const pannesStr = pannes.length ? '\n__PANNES__:'+JSON.stringify(pannes) : '';
   try{
     await api('POST','/api/comptes-rendus',{
       date,
@@ -916,7 +761,7 @@ async function saveCR(){
       a_faire:  document.getElementById('cr-todo').value.trim(),
       besoin:   document.getElementById('cr-need').value.trim(),
       blocage:  document.getElementById('cr-block').value.trim(),
-      commentaire: baseComment + pannesStr
+      commentaire: document.getElementById('cr-comment').value.trim()
     });
     toast('Compte rendu enregistré ✓');
     clearCR();
@@ -928,8 +773,6 @@ function clearCR(){
   ['cr-done','cr-todo','cr-need','cr-block','cr-comment'].forEach(id=>document.getElementById(id).value='');
   ['cr-closed','cr-open','cr-waiting'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cr-date').value=TODAY;
-  document.getElementById('pannes-list').innerHTML='';
-  panneCount=0;
 }
 
 async function delCR(id){
@@ -969,8 +812,7 @@ async function saveAF(){
     toast('Affectation créée ✓');
     ['af-task','af-ot','af-atelier','af-note'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('af-deadline').value='';
-    loadAF(); renderGantt();
-    if(currentTab==='gantt') loadGantt();
+    loadAF();
   }catch(e){toast('Erreur',false);}
 }
 
@@ -1026,8 +868,6 @@ async function updateAFStatus(id,statut){
   await api('PUT','/api/affectations/'+id,{statut});
   toast('Statut mis à jour ✓');
   updateBadge();
-  updateRetardBadge();
-  renderGantt();
 }
 
 function addCROT(id, existing){
@@ -1039,9 +879,7 @@ function addCROT(id, existing){
 async function delAF(id){
   if(!confirm('Supprimer cette affectation ?'))return;
   await api('DELETE','/api/affectations/'+id);
-  loadAF();
-  loadGantt();
-  toast('Supprimé');
+  loadAF();toast('Supprimé');
 }
 
 async function updateBadge(){
@@ -1055,17 +893,123 @@ async function updateBadge(){
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
+async function loadPieces(){
+  try{
+    allPieces=await api('GET','/api/stock')||[];
+    const total=allPieces.length;
+    const ruptures=allPieces.filter(p=>p.stock_actuel<=0).length;
+    const critique=allPieces.filter(p=>p.stock_actuel>0&&p.stock_actuel<=p.stock_min).length;
+    const valeur=allPieces.reduce((s,p)=>(s+(p.stock_actuel*p.prix_unitaire||0)),0);
+    document.getElementById('stock-kpis').innerHTML=`
+      <div class="kpi"><div class="kpi-val">${total}</div><div class="kpi-lbl">Références en stock</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--red)">${ruptures}</div><div class="kpi-lbl">Ruptures de stock</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--orange)">${critique}</div><div class="kpi-lbl">Stock critique</div></div>
+      <div class="kpi"><div class="kpi-val" style="color:var(--green)">${Math.round(valeur/1000)}k</div><div class="kpi-lbl">Valeur totale (MAD)</div></div>`;
+
+    // Alertes
+    const alerte=allPieces.filter(p=>p.stock_actuel<=p.stock_min);
+    document.getElementById('stock-alerts').innerHTML=alerte.length?`
+      <div style="background:var(--rdim);border:1px solid rgba(240,74,74,.2);border-radius:var(--r);padding:14px 16px;margin-bottom:4px">
+        <div style="font-weight:700;font-size:13px;color:var(--red);margin-bottom:8px">⚠ ${alerte.length} pièce${alerte.length>1?'s':''} en alerte stock</div>
+        ${alerte.map(p=>`<div style="font-size:12px;display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(240,74,74,.1)">
+          <span style="color:var(--text2)">${p.designation}</span>
+          <span class="badge ${p.stock_actuel<=0?'br':'bo'}">${p.stock_actuel<=0?'Rupture':'Critique'} — ${p.stock_actuel} ${p.unite}</span>
+        </div>`).join('')}
+      </div>`:'';
+
+    // Table
+    const mvtSel=document.getElementById('mvt-piece');
+    mvtSel.innerHTML='<option value="">-- Choisir une pièce --</option>';
+    allPieces.forEach(p=>mvtSel.innerHTML+=`<option value="${p.id}">${p.designation} (${p.stock_actuel} ${p.unite})</option>`);
+
+    document.getElementById('stock-tbody').innerHTML=allPieces.map(p=>{
+      const pct=p.stock_min>0?Math.min(100,Math.round(p.stock_actuel/p.stock_min*100)):100;
+      const color=pct<=0?'var(--red)':pct<=50?'var(--orange)':'var(--green)';
+      const statut=p.stock_actuel<=0?'<span class="badge br">Rupture</span>':p.stock_actuel<=p.stock_min?'<span class="badge bo">Critique</span>':'<span class="badge bg">OK</span>';
+      return `<tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${p.reference}</td>
+        <td><div style="font-weight:600">${p.designation}</div><div style="font-size:11px;color:var(--text3)">${p.marque||''}</div></td>
+        <td><span class="badge bgr">${p.categorie||'—'}</span></td>
+        <td style="font-weight:700;color:${color}">${p.stock_actuel} ${p.unite}</td>
+        <td style="color:var(--text3)">${p.stock_min} ${p.unite}</td>
+        <td><div class="level-bar"><div class="level-fill" style="width:${pct}%;background:${color}"></div></div></td>
+        <td style="color:var(--text2)">${p.emplacement||'—'}</td>
+        <td>${statut}</td>
+        <td>${ME?.role==='responsable'?`<button class="btn btn-red btn-sm" onclick="delPiece(${p.id})">🗑</button>`:''}</td>
+      </tr>`;
+    }).join('');
+  }catch(e){console.error(e);}
+}
+
+async function savePiece(){
+  const ref=document.getElementById('st-ref').value.trim();
+  const des=document.getElementById('st-des').value.trim();
+  if(!ref||!des){toast('Référence et désignation requises',false);return;}
+  try{
+    await api('POST','/api/stock',{
+      reference:ref,designation:des,
+      marque:document.getElementById('st-marq').value.trim(),
+      categorie:document.getElementById('st-cat').value,
+      stock_actuel:parseFloat(document.getElementById('st-qty').value)||0,
+      stock_min:parseFloat(document.getElementById('st-min').value)||0,
+      unite:document.getElementById('st-unit').value,
+      emplacement:document.getElementById('st-loc').value.trim(),
+      fournisseur:document.getElementById('st-furn').value.trim(),
+      prix_unitaire:parseFloat(document.getElementById('st-prix').value)||null
+    });
+    toast('Pièce ajoutée ✓');
+    ['st-ref','st-des','st-marq','st-qty','st-min','st-loc','st-furn','st-prix'].forEach(id=>document.getElementById(id).value='');
+    loadPieces();
+  }catch(e){toast('Erreur — référence déjà existante ?',false);}
+}
+
+async function delPiece(id){
+  if(!confirm('Supprimer cette pièce du stock ?'))return;
+  await api('DELETE','/api/stock/'+id);
+  loadPieces();toast('Supprimé');
+}
+
+async function loadMouvements(){
+  try{
+    const mvts=await api('GET','/api/mouvements')||[];
+    document.getElementById('mvt-list').innerHTML=mvts.length?mvts.map(m=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div>
+          <span class="badge ${m.type==='sortie'?'br':'bg'}">${m.type==='sortie'?'📤':'📥'} ${m.type}</span>
+          <span style="margin-left:8px;font-weight:600">${m.designation}</span>
+          ${m.ot?`<span style="color:var(--text3);margin-left:6px">${m.ot}</span>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;color:${m.type==='sortie'?'var(--red)':'var(--green)'}">${m.type==='sortie'?'-':'+'}${m.quantite} ${m.unite}</div>
+          <div style="color:var(--text3)">${m.user_nom} · ${new Date(m.created_at).toLocaleDateString('fr-FR')}</div>
+        </div>
+      </div>`).join(''):'<div class="empty"><p>Aucun mouvement</p></div>';
+  }catch{}
+}
+
+async function saveMvt(){
+  const piece_id=document.getElementById('mvt-piece').value;
+  const qty=parseFloat(document.getElementById('mvt-qty').value);
+  const type=document.getElementById('mvt-type').value;
+  if(!piece_id||!qty){toast('Pièce et quantité requises',false);return;}
+  try{
+    await api('POST','/api/mouvements',{piece_id,type,quantite:qty,motif:document.getElementById('mvt-motif').value.trim(),ot:document.getElementById('mvt-ot').value.trim(),equipement:document.getElementById('mvt-equip').value.trim()});
+    toast('Mouvement enregistré ✓');
+    ['mvt-qty','mvt-ot','mvt-equip','mvt-motif'].forEach(id=>document.getElementById(id).value='');
+    loadMouvements();
+    loadPieces();
+  }catch(e){toast('Erreur',false);}
+}
+
 // ── BASE DE CONNAISSANCES ─────────────────────────────────────────────────────
 async function loadEquipements(){
   try{
     allEquips=await api('GET','/api/equipements')||[];
-    const isResp = ME?.role==='responsable';
     document.getElementById('equip-list').innerHTML=allEquips.length?
       allEquips.map(e=>`
-        <div class="equip-card ${selEquip?.id===e.id?'active':''}" onclick="selectEquip(${e.id})" style="position:relative">
+        <div class="equip-card ${selEquip?.id===e.id?'active':''}" onclick="selectEquip(${e.id})">
           <div class="equip-name">${e.nom}</div>
           <div class="equip-meta">${e.atelier||''} ${e.categorie?'· '+e.categorie:''}</div>
-          ${isResp?`<button class="btn btn-red btn-sm" style="position:absolute;top:8px;right:8px;padding:3px 7px;font-size:10px" onclick="event.stopPropagation();delEquip(${e.id})">🗑</button>`:''}
         </div>`).join(''):
       '<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px">Aucun équipement</div>';
     if(selEquip) selectEquip(selEquip.id);
@@ -1081,23 +1025,6 @@ async function saveEquip(){
     ['eq-nom','eq-atelier','eq-marque','eq-modele'].forEach(id=>document.getElementById(id).value='');
     loadEquipements();
   }catch(e){toast('Erreur',false);}
-}
-
-async function delEquip(id){
-  if(!confirm('Supprimer cet équipement et toutes ses procédures ?'))return;
-  try{
-    await api('DELETE','/api/equipements/'+id);
-    if(selEquip?.id===id){
-      selEquip=null;
-      document.getElementById('equip-detail').innerHTML=`
-        <div class="empty">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-          <p>Sélectionnez un équipement</p>
-        </div>`;
-    }
-    loadEquipements();
-    toast('Équipement supprimé');
-  }catch(e){toast('Erreur suppression',false);}
 }
 
 async function selectEquip(id){
@@ -1192,13 +1119,14 @@ function printRapport(){
 // ── EXPORT EXCEL ─────────────────────────────────────────────────────────────
 async function exportExcel(){
   try{
-    const[crs,afs]=await Promise.all([api('GET','/api/comptes-rendus'),api('GET','/api/affectations')]);
+    const[crs,afs,stock]=await Promise.all([api('GET','/api/comptes-rendus'),api('GET','/api/affectations'),api('GET','/api/stock')]);
     const wb=XLSX.utils.book_new();
     const ws1=XLSX.utils.aoa_to_sheet([['Technicien','Date','OT Clôturés','OT En cours','OT Attente','Réalisé','À faire','Besoin','Blocage','Commentaire'],...(crs||[]).map(r=>[r.nom,r.date,r.ot_clotures,r.ot_en_cours,r.ot_attente,r.realise,r.a_faire,r.besoin,r.blocage,r.commentaire])]);
     XLSX.utils.book_append_sheet(wb,ws1,'Comptes rendus');
     const ws2=XLSX.utils.aoa_to_sheet([['Technicien','Date','Deadline','OT','Mission','Atelier','Priorité','Statut','CR OT'],...(afs||[]).map(a=>[a.tech_nom||a.nom,a.date,a.deadline,a.ot,a.tache,a.atelier,a.priorite,a.statut,a.cr_ot])]);
     XLSX.utils.book_append_sheet(wb,ws2,'Affectations');
-
+    const ws3=XLSX.utils.aoa_to_sheet([['Référence','Désignation','Catégorie','Stock','Min','Unité','Statut'],...(stock||[]).map(p=>[p.reference,p.designation,p.categorie,p.stock_actuel,p.stock_min,p.unite,p.stock_actuel<=0?'Rupture':p.stock_actuel<=p.stock_min?'Critique':'OK'])]);
+    XLSX.utils.book_append_sheet(wb,ws3,'Stock');
     XLSX.writeFile(wb,'MaintenanceOps_'+TODAY+'.xlsx');
     toast('Export Excel ✓');
   }catch(e){toast('Erreur export',false);}
@@ -1249,361 +1177,6 @@ function urlB64(b64){
   return arr;
 }
 
-
-// ── CR TYPE SWITCH ────────────────────────────────────────────────────────────
-function setCRType(type){
-  const isJour = type === 'jour';
-  document.getElementById('cr-jour-wrap').style.display = isJour ? 'block' : 'none';
-  document.getElementById('cr-ot-wrap').style.display   = isJour ? 'none'  : 'block';
-  const bJ = document.getElementById('btn-cr-jour');
-  const bO = document.getElementById('btn-cr-ot');
-  bJ.className = 'btn ' + (isJour ? 'btn-primary' : '');
-  bJ.style.cssText = 'flex:1;justify-content:center';
-  bO.className = 'btn ' + (!isJour ? 'btn-primary' : '');
-  bO.style.cssText = 'flex:1;justify-content:center';
-  if(!isJour) loadMyAFsForCR();
-}
-
-async function loadMyAFsForCR(){
-  try{
-    const items = await api('GET','/api/affectations') || [];
-    const pending = items.filter(a => a.statut !== 'Terminé').sort((a,b)=>b.date.localeCompare(a.date));
-    const sel = document.getElementById('cr-af-select');
-    sel.innerHTML = '<option value="">-- Sélectionner --</option>';
-    pending.forEach(a => {
-      const lbl = (a.ot?a.ot+' — ':'')+(a.tache.length>40?a.tache.slice(0,38)+'…':a.tache)+' ('+a.date+')';
-      sel.innerHTML += `<option value="${a.id}">${lbl}</option>`;
-    });
-    if(!pending.length) sel.innerHTML = '<option value="">Aucune affectation en cours</option>';
-    document.getElementById('cr-af-detail').style.display = 'none';
-  }catch(e){ console.error(e); }
-}
-
-function onSelectAF(){
-  const val = document.getElementById('cr-af-select').value;
-  document.getElementById('cr-af-detail').style.display = val ? 'block' : 'none';
-  if(val){
-    ['cr-af-realise','cr-af-pieces','cr-af-obs'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('cr-af-temps').value='';
-    document.getElementById('cr-af-statut').value='Terminé';
-  }
-}
-
-async function saveCRAF(){
-  const afId = document.getElementById('cr-af-select').value;
-  if(!afId){ toast('Sélectionnez une affectation',false); return; }
-  const realise = document.getElementById('cr-af-realise').value.trim();
-  const statut  = document.getElementById('cr-af-statut').value;
-  const temps   = document.getElementById('cr-af-temps').value;
-  const pieces  = document.getElementById('cr-af-pieces').value.trim();
-  const obs     = document.getElementById('cr-af-obs').value.trim();
-  let cr = realise;
-  if(pieces) cr += '\nPièces : '+pieces;
-  if(temps)  cr += '\nTemps : '+temps+'h';
-  if(obs)    cr += '\nObs : '+obs;
-  try{
-    await api('PUT','/api/affectations/'+afId, {statut, cr_ot:cr});
-    toast('CR enregistré ✓' + (statut==='Terminé' ? ' — Affectation clôturée automatiquement' : ''));
-    document.getElementById('cr-af-select').value='';
-    document.getElementById('cr-af-detail').style.display='none';
-    // Auto sync everything
-    loadMyAFsForCR();
-    loadMyCRAF();
-    updateBadge();
-    updateRetardBadge();
-    renderGantt();
-    if(currentTab==='historique') loadHistorique();
-    if(currentTab==='affectations') loadAF();
-  }catch(e){ toast('Erreur',false); }
-}
-
-async function loadMyCRAF(){
-  try{
-    const items = await api('GET','/api/affectations')||[];
-    const withCR = items.filter(a=>a.cr_ot).sort((a,b)=>b.date.localeCompare(a.date));
-    const list = document.getElementById('my-craf-list');
-    if(!list) return;
-    if(!withCR.length){ list.innerHTML='<div class="empty"><p>Aucun CR OT enregistré</p></div>'; return; }
-    list.innerHTML = withCR.slice(0,5).map(a=>`
-      <div style="background:var(--s2);border-radius:var(--rsm);padding:10px 14px;margin-bottom:8px;font-size:13px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-          <span style="font-weight:600">${a.ot?a.ot+' — ':''}${a.tache.length>35?a.tache.slice(0,33)+'…':a.tache}</span>
-          <span class="badge ${a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':'bo'}">${a.statut}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.5">${a.cr_ot}</div>
-      </div>`).join('');
-  }catch{}
-}
-
-// ── GANTT ─────────────────────────────────────────────────────────────────────
-let gStart = null;
-
-function gWeekStart(d){
-  const dt=new Date(d); dt.setHours(0,0,0,0);
-  const day=dt.getDay();
-  dt.setDate(dt.getDate()-(day===0?6:day-1));
-  return dt;
-}
-function gToday(){ gStart=gWeekStart(new Date()); renderGantt(); }
-function gPrev(){  const d=new Date(gStart); d.setDate(d.getDate()-7); gStart=d; renderGantt(); }
-function gNext(){  const d=new Date(gStart); d.setDate(d.getDate()+7); gStart=d; renderGantt(); }
-function gFmt(d){ return d.toISOString().slice(0,10); }
-
-function showBarDetail(el){
-  const info = el.title.replace(/ \| /g, '\n');
-  toast(el.title.split(' | ')[0]);
-}
-
-async function renderGantt(){
-  if(!gStart) gStart = gWeekStart(new Date());
-  const wrap = document.getElementById('g-wrap');
-  if(!wrap) return;
-
-  // Build 7 days
-  const days = [];
-  for(let i=0;i<7;i++){
-    const d=new Date(gStart); d.setDate(d.getDate()+i); days.push(d);
-  }
-  const todayStr = new Date().toISOString().slice(0,10);
-
-  // Update period label
-  const MN=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  const DN=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  document.getElementById('g-period').textContent =
-    MN[days[0].getMonth()]+' '+days[0].getFullYear()+
-    ' — Sem. du '+days[0].getDate()+' au '+days[6].getDate();
-
-  wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
-
-  // Step 1: get affectations
-  let afs = [];
-  try{
-    const res = await fetch('/api/affectations',{credentials:'include'});
-    if(res.ok) afs = await res.json();
-    else{ wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erreur API: '+res.status+'</div>'; return; }
-  }catch(e){
-    wrap.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erreur réseau: '+e.message+'</div>';
-    return;
-  }
-
-  // Step 2: filter affectations overlapping this week
-  const wFrom = days[0].toISOString().slice(0,10);
-  const wTo   = days[6].toISOString().slice(0,10);
-  const wAfs  = afs.filter(a=>{
-    const dl = a.deadline || a.date;
-    return a.date <= wTo && dl >= wFrom;
-  });
-
-  // Step 3: get technician list
-  let users = [];
-  if(ME && ME.role==='responsable'){
-    try{
-      const ru = await fetch('/api/users',{credentials:'include'});
-      if(ru.ok){
-        const all = await ru.json();
-        users = all.filter(u=>u.role==='technicien');
-      }
-    }catch(e){}
-    if(!users.length){
-      // Extract from affectations
-      const seen={};
-      afs.forEach(a=>{ if(a.user_id && !seen[a.user_id]){ seen[a.user_id]=true; users.push({id:a.user_id,nom:a.tech_nom||('Tech '+a.user_id)}); }});
-    }
-  } else if(ME){
-    users = [{id:ME.id, nom:ME.nom}];
-  }
-
-  if(!users.length){
-    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)"><p>Aucune affectation cette semaine</p><p style="font-size:11px;margin-top:6px">Créez des affectations pour les voir ici</p></div>';
-    return;
-  }
-
-  // Step 4: build HTML
-  const TW=155, CELL_H=36, PAD=6;
-  let rows='';
-
-  users.forEach(user=>{
-    const uAfs = wAfs.filter(a=>String(a.user_id)===String(user.id)||a.tech_nom===user.nom);
-    const rowH = Math.max(50, uAfs.length*(CELL_H+4)+PAD*2);
-    const nameParts = user.nom.split(' ');
-    const firstName = nameParts[0];
-    const lastName  = nameParts.slice(1).join(' ');
-
-    let bars='';
-    uAfs.forEach((af,idx)=>{
-      // Clamp bar to visible week
-      const afS = new Date(af.date+'T00:00:00');
-      const afE = new Date((af.deadline||af.date)+'T00:00:00');
-      const visS = afS<days[0]?days[0]:afS;
-      const visE = afE>days[6]?days[6]:afE;
-
-      const visSD = visS.toISOString().slice(0,10);
-      const visED = visE.toISOString().slice(0,10);
-      let colS = days.findIndex(d=>d.toISOString().slice(0,10)===visSD);
-      let colE = days.findIndex(d=>d.toISOString().slice(0,10)===visED);
-      if(colS<0) colS=0;
-      if(colE<0) colE=6;
-      const span = Math.max(1, colE-colS+1);
-
-      const left  = (colS/7*100).toFixed(2);
-      const width = (span/7*100 - 0.5).toFixed(2);
-      const top   = PAD + idx*(CELL_H+4);
-      const prio  = (af.priorite||'Moyenne').toLowerCase();
-      const done  = af.statut==='Terminé';
-      const lbl   = af.tache.length>22?af.tache.slice(0,20)+'…':af.tache;
-      const info  = af.tache+'\nDu: '+af.date+' → '+(af.deadline||af.date)+'\nStatut: '+af.statut+'\nPriorité: '+af.priorite+(af.atelier?' | '+af.atelier:'');
-
-      bars += '<div class="gantt-bar prio-'+prio+(done?' done':'')+'"'+
-        ' style="left:'+left+'%;width:'+width+'%;top:'+top+'px"'+
-        ' title="'+info.replace(/"/g,"'")+'">'+
-        (done?'✓ ':'')+lbl+
-        '</div>';
-    });
-
-    rows += '<div class="gantt-row" style="display:grid;grid-template-columns:'+TW+'px 1fr;min-height:'+rowH+'px;border-bottom:1px solid var(--border)">'+
-      '<div class="gantt-tech" style="padding:10px 12px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;min-height:'+rowH+'px">'+
-        '<span style="font-weight:700;font-size:12px">'+firstName+'</span>'+
-        '<span style="font-size:10px;color:var(--text3)">'+lastName+'</span>'+
-        '<span style="font-size:10px;color:var(--accent);margin-top:2px">'+uAfs.length+' aff.</span>'+
-      '</div>'+
-      '<div style="position:relative;min-height:'+rowH+'px">'+
-        // day columns
-        days.map((d,i)=>{
-          const isT=d.toISOString().slice(0,10)===todayStr;
-          const isWE=d.getDay()===0||d.getDay()===6;
-          return '<div style="position:absolute;left:'+(i/7*100).toFixed(2)+'%;width:'+(1/7*100).toFixed(2)+'%;height:100%;'+
-            (isT?'background:var(--adim)':isWE?'background:rgba(0,0,0,0.02)':'')+
-            ';border-right:1px solid var(--border)"></div>';
-        }).join('')+
-        bars+
-      '</div>'+
-    '</div>';
-  });
-
-  // Header
-  const header = '<div style="display:grid;grid-template-columns:'+TW+'px 1fr;background:var(--s2);border-radius:var(--r) var(--r) 0 0;border:1px solid var(--border2)">'+
-    '<div style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;border-right:1px solid var(--border2)">Technicien</div>'+
-    '<div style="display:flex">'+
-      days.map(d=>{
-        const isT=d.toISOString().slice(0,10)===todayStr;
-        return '<div style="flex:1;text-align:center;padding:8px 2px;font-size:11px;font-weight:600;color:'+(isT?'var(--accent)':'var(--text2)')+';border-right:1px solid var(--border)">'+
-          DN[d.getDay()]+'<br><strong>'+d.getDate()+'</strong></div>';
-      }).join('')+
-    '</div>'+
-  '</div>';
-
-  wrap.innerHTML =
-    '<div style="min-width:600px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border)">'+
-      header+
-      '<div>'+rows+'</div>'+
-    '</div>';
-}
-
-
-async function loadHistorique(){
-  const list   = document.getElementById('hist-list');
-  const filtre = document.getElementById('hist-filter-statut')?.value || '';
-  if(!list) return;
-  list.innerHTML = '<div class="empty"><p>Chargement...</p></div>';
-  try{
-    const items = (await api('GET', '/api/affectations')) || [];
-    const today = new Date().toISOString().slice(0,10);
-
-    // Apply filter
-    let filtered = items;
-    if(filtre === 'retard'){
-      filtered = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé');
-    } else if(filtre){
-      filtered = items.filter(a => a.statut === filtre);
-    }
-
-    // Sort: retard first, then by date desc
-    filtered.sort((a,b) => {
-      const aRetard = a.deadline && a.deadline < today && a.statut !== 'Terminé';
-      const bRetard = b.deadline && b.deadline < today && b.statut !== 'Terminé';
-      if(aRetard && !bRetard) return -1;
-      if(!aRetard && bRetard) return 1;
-      return b.date.localeCompare(a.date);
-    });
-
-    // KPIs
-    const total  = items.length;
-    const done   = items.filter(a => a.statut === 'Terminé').length;
-    const cours  = items.filter(a => a.statut === 'En cours').length;
-    const retard = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé').length;
-
-    const el = id => document.getElementById(id);
-    if(el('h-total')) el('h-total').textContent = total;
-    if(el('h-done'))  el('h-done').textContent  = done;
-    if(el('h-cours')) el('h-cours').textContent = cours;
-    if(el('h-retard'))el('h-retard').textContent= retard;
-
-    if(!filtered.length){
-      list.innerHTML = '<div class="empty"><p>Aucune affectation</p></div>';
-      return;
-    }
-
-    list.innerHTML = filtered.map(a => {
-      const today2 = new Date().toISOString().slice(0,10);
-      const isRetard = a.deadline && a.deadline < today2 && a.statut !== 'Terminé';
-      const dlDiff = a.deadline ? Math.ceil((new Date(a.deadline) - new Date(today2)) / 86400000) : null;
-      let dlBadge = '';
-      if(!a.deadline) dlBadge = '<span class="dl dl-none">Pas de deadline</span>';
-      else if(isRetard) dlBadge = `<span class="dl dl-late">⚠ Dépassée (${a.deadline})</span>`;
-      else if(dlDiff === 0) dlBadge = '<span class="dl dl-warn">⚡ Auj.</span>';
-      else if(dlDiff <= 3) dlBadge = `<span class="dl dl-warn">⏰ J-${dlDiff}</span>`;
-      else dlBadge = `<span class="dl dl-ok">✓ ${a.deadline}</span>`;
-
-      const stClass = a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':a.statut==='Non réalisé'?'br':'bgr';
-      const prioClass = a.priorite==='Haute'?'br':a.priorite==='Basse'?'bg':'bo';
-
-      return `<div class="af-item${isRetard?' retard-item':''}">
-        <div class="af-bar ${(a.priorite||'moyenne').toLowerCase()}"></div>
-        <div class="af-body">
-          <div class="af-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${ME?.role==='responsable'?`<span style="color:var(--accent);font-weight:700">${a.tech_nom||''}</span> —`:''} 
-            ${a.tache}
-            ${a.ot?`<span style="font-size:10px;font-family:monospace;color:var(--text3)">${a.ot}</span>`:''}
-          </div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">
-            📅 ${a.date} ${a.atelier?'· '+a.atelier:''}
-          </div>
-          <div class="af-meta" style="margin-top:6px">
-            ${dlBadge}
-            <span class="badge ${stClass}">${a.statut}</span>
-            <span class="badge ${prioClass}">${a.priorite}</span>
-          </div>
-          ${a.note_resp?`<div class="af-note">→ ${a.note_resp}</div>`:''}
-          ${a.cr_ot?`<div style="background:var(--s2);border-radius:var(--rsm);padding:8px 10px;margin-top:6px;font-size:11px;color:var(--text2);border-left:3px solid var(--accent)">📝 ${a.cr_ot}</div>`:''}
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
-          <select class="status-sel" onchange="updateAFStatus(${a.id},this.value)">
-            ${['À faire','En cours','Terminé','Non réalisé'].map(s=>`<option${s===a.statut?' selected':''}>${s}</option>`).join('')}
-          </select>
-          ${ME?.role==='responsable'?`<button class="btn btn-red btn-sm" onclick="delAFHist(${a.id})">🗑</button>`:''}
-        </div>
-      </div>`;
-    }).join('');
-
-  }catch(e){ list.innerHTML = `<div class="empty"><p>Erreur: ${e.message}</p></div>`; }
-}
-
-async function delAFHist(id){
-  if(!confirm('Supprimer cette affectation ?')) return;
-  try{ await api('DELETE','/api/affectations/'+id); loadHistorique(); renderGantt(); toast('Supprimé'); }
-  catch(e){ toast('Erreur',false); }
-}
-
-async function updateRetardBadge(){
-  try{
-    const items = (await api('GET','/api/affectations')) || [];
-    const today = new Date().toISOString().slice(0,10);
-    const retard = items.filter(a => a.deadline && a.deadline < today && a.statut !== 'Terminé').length;
-    const b = document.getElementById('badge-retard');
-    if(b){ b.textContent = retard; b.style.display = retard > 0 ? 'inline' : 'none'; }
-  }catch{}
-}
-
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 function toast(msg,ok=true){
   const el=document.getElementById('toast');
@@ -1645,63 +1218,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     if(window.innerWidth <= 768) closeSidebar();
   });
 });
-
-// ── PLANNING GANTT ───────────────────────────────────────────────────────────
-let ganttStart = null;
-
-function ganttWeekStart(d){
-  const dt = new Date(d);
-  const day = dt.getDay();
-  const diff = dt.getDate() - day + (day===0?-6:1);
-  dt.setDate(diff);
-  dt.setHours(0,0,0,0);
-  return dt;
-}
-
-function ganttToday(){
-  ganttStart = ganttWeekStart(new Date());
-  renderGantt();
-}
-
-function ganttPrev(){
-  const d = new Date(ganttStart);
-  d.setDate(d.getDate()-7);
-  ganttStart = d;
-  renderGantt();
-}
-
-function ganttNext(){
-  const d = new Date(ganttStart);
-  d.setDate(d.getDate()+7);
-  ganttStart = d;
-  renderGantt();
-}
-
-function fmtDate(d){
-  return d.toISOString().slice(0,10);
-}
-
-function dayLabel(d){
-  const days=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  return days[d.getDay()]+'<br>'+d.getDate();
-}
-
-function monthLabel(d){
-  const months=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-  return months[d.getMonth()]+' '+d.getFullYear();
-}
-
-async function loadGantt(){
-  if(!ganttStart) ganttStart = ganttWeekStart(new Date());
-  renderGantt();
-}
-
-
-function showGanttDetail(af){
-  const prio = af.priorite||'Moyenne';
-  const msg = `📋 ${af.tache}\n\nTechnicien : ${af.tech_nom||af.nom||'—'}\nDate : ${af.date}\nDeadline : ${af.deadline||'Aucune'}\nPriorité : ${prio}\nStatut : ${af.statut}\nOT : ${af.ot||'—'}\nAtelier : ${af.atelier||'—'}${af.note_resp?'\nInstructions : '+af.note_resp:''}`;
-  alert(msg);
-}
 
 // ── THEME ────────────────────────────────────────────────────────────────────
 function toggleTheme(){
