@@ -1560,6 +1560,20 @@ let planningWeekStart = null;
 const JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const MOIS_SHORT = ['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
 
+// ── Génère "YYYY-MM-DD" en heure LOCALE (évite décalage UTC) ──────────────────
+function localDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,'0');
+  const d = String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+
+// ── Normalise une date venant de l'API (ex: "2026-06-04T00:00:00.000Z") ───────
+function normDate(d) {
+  if(!d) return null;
+  return String(d).slice(0,10); // garde seulement "YYYY-MM-DD"
+}
+
 function getWeekMonday(d) {
   const date = new Date(d);
   const day = date.getDay();
@@ -1569,8 +1583,8 @@ function getWeekMonday(d) {
 }
 
 function getISOWeek(d) {
-  const date = new Date(d);
-  date.setHours(0,0,0,0);
+  const date = new Date(localDateStr(d)); // parse comme date locale
+  date.setHours(12,0,0,0); // midi pour éviter DST
   date.setDate(date.getDate() + 3 - ((date.getDay()+6)%7));
   const w1 = new Date(date.getFullYear(),0,4);
   return 1 + Math.round(((date-w1)/86400000 - 3 + (w1.getDay()+6)%7)/7);
@@ -1603,36 +1617,45 @@ function goToCurrentWeek() {
 async function loadPlanning() {
   if(!planningWeekStart) { initPlanning(); return; }
 
+  // ── Génération des 7 jours en heure locale ───────────────────────────────
   const weekDates = [];
   for(let i=0;i<7;i++){
     const d = new Date(planningWeekStart);
     d.setDate(d.getDate()+i);
-    weekDates.push(d.toISOString().slice(0,10));
+    weekDates.push(localDateStr(d)); // ← heure locale, pas UTC
   }
   const from = weekDates[0];
   const to   = weekDates[6];
 
-  // Header
-  const fromDate = new Date(from);
-  const toDate   = new Date(to);
+  // ── En-tête période ───────────────────────────────────────────────────────
+  const p0 = new Date(planningWeekStart); // objet date locale sûr
+  const p6 = new Date(planningWeekStart); p6.setDate(p6.getDate()+6);
   document.getElementById('planning-period').textContent =
-    `${fromDate.getDate()} ${MOIS_SHORT[fromDate.getMonth()]} — ${toDate.getDate()} ${MOIS_SHORT[toDate.getMonth()]} ${toDate.getFullYear()}`;
-  document.getElementById('planning-week-num').textContent = `Semaine ${getISOWeek(fromDate)}`;
+    `${p0.getDate()} ${MOIS_SHORT[p0.getMonth()]} — ${p6.getDate()} ${MOIS_SHORT[p6.getMonth()]} ${p6.getFullYear()}`;
+  document.getElementById('planning-week-num').textContent = `Semaine ${getISOWeek(planningWeekStart)}`;
 
   document.getElementById('gantt-container').innerHTML = '<div class="empty"><p>Chargement...</p></div>';
 
   try {
     const afs = await api('GET', `/api/affectations?from=${from}&to=${to}&planning=true`) || [];
 
+    // Normaliser les dates de chaque affectation (sécurité format)
+    const afsNorm = afs.map(a => ({
+      ...a,
+      date:     normDate(a.date),
+      deadline: normDate(a.deadline)
+    }));
+
     if(ME.role === 'responsable') {
       const users = await api('GET', '/api/users') || [];
       const techs = users.filter(u=>u.role==='technicien');
-      renderGantt(afs, techs, weekDates);
+      renderGantt(afsNorm, techs, weekDates);
     } else {
-      renderGantt(afs, [{id:ME.id, nom:ME.nom}], weekDates);
+      renderGantt(afsNorm, [{id:ME.id, nom:ME.nom}], weekDates);
     }
   } catch(e) {
-    document.getElementById('gantt-container').innerHTML='<div class="empty"><p>Erreur de chargement</p></div>';
+    console.error('Planning error:', e);
+    document.getElementById('gantt-container').innerHTML='<div class="empty"><p>Erreur : '+e.message+'</p></div>';
   }
 }
 
@@ -1645,10 +1668,11 @@ function afColor(a) {
 }
 
 function assignLanes(afs, weekDates) {
-  const sorted = [...afs].sort((a,b)=>a.date.localeCompare(b.date));
+  const sorted = [...afs].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const laneEnds = [];
   return sorted.map(a => {
-    const s = a.date < weekDates[0] ? weekDates[0] : a.date;
+    // Clip dates au périmètre de la semaine
+    const s = (!a.date || a.date < weekDates[0]) ? weekDates[0] : a.date;
     const e = (!a.deadline || a.deadline > weekDates[6]) ? weekDates[6] : a.deadline;
     let lane = 0;
     while(lane < laneEnds.length && laneEnds[lane] >= s) lane++;
@@ -1664,84 +1688,120 @@ function renderGantt(afs, techs, weekDates) {
     return;
   }
 
+  const LANE_H = 34; // hauteur d'une ligne d'affectation
   const byUser = {};
-  techs.forEach(u=>byUser[u.id]=[]);
-  afs.forEach(a=>{ if(byUser[a.user_id]!==undefined) byUser[a.user_id].push(a); });
+  techs.forEach(u => byUser[String(u.id)] = []);
+  afs.forEach(a => {
+    const key = String(a.user_id);
+    if(byUser[key] !== undefined) byUser[key].push(a);
+  });
 
-  // Header row
-  let html = `<div style="display:grid;grid-template-columns:120px 1fr;border-bottom:2px solid var(--border2);background:var(--s2)">
-    <div style="padding:10px 12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-right:1px solid var(--border2);display:flex;align-items:center">Technicien</div>
+  // ── En-tête des jours ─────────────────────────────────────────────────────
+  let html = `<div style="display:grid;grid-template-columns:130px 1fr;border-bottom:2px solid var(--border2);background:var(--s2)">
+    <div style="padding:10px 12px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-right:1px solid var(--border2)">Technicien</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr)">
       ${weekDates.map((d,i)=>{
-        const dt = new Date(d);
-        const isToday = d===TODAY;
-        return `<div style="padding:8px 4px;text-align:center;border-right:1px solid var(--border);${i===6?'border-right:none':''}${isToday?';background:rgba(61,108,255,0.12)':''}">
+        const parts = d.split('-');
+        const jour  = parseInt(parts[2]);
+        const mois  = parseInt(parts[1])-1;
+        const isToday = d === localDateStr(new Date());
+        return `<div style="padding:8px 4px;text-align:center;border-right:${i===6?'none':'1px solid var(--border)'};${isToday?'background:rgba(61,108,255,0.14)':''}">
           <div style="font-size:11px;font-weight:700;color:${isToday?'var(--accent)':'var(--text2)'}">${JOURS[i]}</div>
-          <div style="font-size:10px;color:${isToday?'var(--accent)':'var(--text3)'};margin-top:1px">${dt.getDate()} ${MOIS_SHORT[dt.getMonth()]}</div>
+          <div style="font-size:10px;color:${isToday?'var(--accent)':'var(--text3)'};margin-top:1px">${jour} ${MOIS_SHORT[mois]}</div>
         </div>`;
       }).join('')}
     </div>
   </div>`;
 
-  // Tech rows
-  techs.forEach((u,ti) => {
-    const userAfs = byUser[u.id] || [];
-    const laned = assignLanes(userAfs, weekDates);
-    const maxLane = laned.length ? Math.max(...laned.map(a=>a._lane))+1 : 1;
-    const laneH = 32;
-    const rowH = Math.max(44, maxLane*laneH + 12);
-    const isLast = ti === techs.length-1;
+  // ── Ligne par technicien ──────────────────────────────────────────────────
+  techs.forEach((u, ti) => {
+    const userAfs = byUser[String(u.id)] || [];
+    const laned   = assignLanes(userAfs, weekDates);
+    const maxLane = laned.length ? Math.max(...laned.map(a=>a._lane))+1 : 0;
+    const rowH    = Math.max(48, maxLane * LANE_H + 14);
+    const isLast  = ti === techs.length - 1;
 
-    html += `<div style="display:grid;grid-template-columns:120px 1fr;${isLast?'':'border-bottom:1px solid var(--border);'}min-height:${rowH}px">
-      <div style="padding:8px 12px;display:flex;align-items:center;border-right:1px solid var(--border);font-size:12px;font-weight:600;background:var(--s1);word-break:break-word;line-height:1.3">
-        ${u.nom.split(' ').map((w,i)=>i===0?`<b>${w}</b>`:w).join(' ')}
+    // Grille des colonnes-jours (fond)
+    const gridLines = weekDates.map((d,i) => {
+      const isToday = d === localDateStr(new Date());
+      return `<div style="position:absolute;left:${(i/7*100).toFixed(2)}%;width:${(1/7*100).toFixed(2)}%;top:0;bottom:0;
+        border-right:${i===6?'none':'1px solid var(--border)'};
+        ${isToday?'background:rgba(61,108,255,0.04)':''}"></div>`;
+    }).join('');
+
+    // Barres d'affectation
+    const barHtml = laned.map(a => {
+      const si = weekDates.indexOf(a._s);
+      const ei = weekDates.indexOf(a._e);
+      if(si < 0 || ei < 0) return ''; // date hors semaine
+      const leftPct  = (si / 7 * 100).toFixed(2);
+      const widthPct = ((ei - si + 1) / 7 * 100).toFixed(2);
+      const topPx    = 7 + a._lane * LANE_H;
+      const bg       = afColor(a);
+      const today    = localDateStr(new Date());
+      const dlOver   = a.deadline && a.deadline < today && a.statut !== 'Terminé';
+      const label    = (a.tache||'').substring(0, 24) + (a.tache?.length > 24 ? '…' : '');
+      const otLabel  = a.ot ? `<span style="opacity:.65;font-size:9px;margin-right:4px;flex-shrink:0">${a.ot}</span>` : '';
+      const crMark   = a.cr_realise ? '<span style="margin-right:3px;flex-shrink:0">✓</span>' : '';
+      const safeData = JSON.stringify(a).replace(/\/g,'\\').replace(/'/g,"\'");
+      return `<div
+        style="position:absolute;
+               left:calc(${leftPct}% + 3px);
+               width:calc(${widthPct}% - 6px);
+               top:${topPx}px;
+               height:26px;
+               background:${bg};
+               color:#fff;
+               border-radius:5px;
+               display:flex;
+               align-items:center;
+               padding:0 6px;
+               font-size:11px;
+               font-weight:600;
+               cursor:pointer;
+               overflow:hidden;
+               white-space:nowrap;
+               box-shadow:0 2px 6px rgba(0,0,0,.3);
+               z-index:3;
+               transition:filter .12s;
+               ${dlOver ? 'box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.3);' : ''}"
+        onmouseover="this.style.filter='brightness(1.2)'"
+        onmouseout="this.style.filter=''"
+        onclick="showPlanningDetail('${safeData}')"
+        title="${(a.tache||'').replace(/"/g,'&quot;')}${a.deadline?' · Deadline: '+a.deadline:''}${a.statut?' · '+a.statut:''}">
+        ${crMark}${otLabel}<span style="overflow:hidden;text-overflow:ellipsis">${label}</span>
+      </div>`;
+    }).join('');
+
+    html += `<div style="display:grid;grid-template-columns:130px 1fr;${isLast?'':'border-bottom:1px solid var(--border)'}">
+      <div style="padding:8px 12px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border);
+                  font-size:11px;font-weight:700;color:var(--text2);text-align:center;
+                  background:var(--s1);line-height:1.3;min-height:${rowH}px">
+        ${u.nom.replace(/\s+/g,'<br>')}
       </div>
-      <div style="position:relative;background:var(--s1)">
-        <!-- Colonnes jour -->
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);height:100%;position:absolute;inset:0;pointer-events:none">
-          ${weekDates.map((d,i)=>{
-            const isToday=d===TODAY;
-            return `<div style="border-right:${i===6?'none':'1px solid var(--border)'};${isToday?'background:rgba(61,108,255,0.04)':''}"></div>`;
-          }).join('')}
-        </div>
-        <!-- Barres affectations -->
-        ${laned.map(a=>{
-          const si = weekDates.indexOf(a._s);
-          const ei = weekDates.indexOf(a._e);
-          if(si<0||ei<0) return '';
-          const left = (si/7*100).toFixed(3);
-          const width = ((ei-si+1)/7*100).toFixed(3);
-          const top = 6 + a._lane*laneH;
-          const bg = afColor(a);
-          const label = (a.tache||'').substring(0,22)+(a.tache?.length>22?'…':'');
-          const hasCR = a.cr_realise ? '✓ ' : '';
-          const dlOver = a.deadline && a.deadline < TODAY && a.statut !== 'Terminé';
-          return `<div
-            style="position:absolute;left:calc(${left}% + 2px);width:calc(${width}% - 4px);top:${top}px;height:26px;
-                   background:${bg};color:#fff;border-radius:5px;
-                   display:flex;align-items:center;padding:0 7px;font-size:11px;font-weight:600;
-                   cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
-                   box-shadow:0 2px 8px rgba(0,0,0,.28);z-index:2;transition:filter .12s;
-                   ${dlOver?'outline:2px solid #fff;outline-offset:-2px;':''}"
-            onmouseover="this.style.filter='brightness(1.18)'"
-            onmouseout="this.style.filter=''"
-            onclick='showPlanningDetail(${JSON.stringify(a).replace(/'/g,"&#39;")})'
-            title="${a.tache}${a.ot?' — OT: '+a.ot:''}${a.atelier?' — '+a.atelier:''}${a.deadline?' — Deadline: '+a.deadline:''}">
-            ${hasCR}<span style="opacity:.75;font-size:9px;margin-right:4px">${a.ot||''}</span>${label}
-          </div>`;
-        }).join('')}
+      <div style="position:relative;height:${rowH}px;background:var(--s1);overflow:visible">
+        ${gridLines}
+        ${barHtml}
       </div>
     </div>`;
   });
 
+  const total = afs.length;
+  if(total > 0) html = `<div style="padding:6px 12px;font-size:11px;color:var(--text3);background:var(--s2);border-bottom:1px solid var(--border)">
+    📊 ${total} affectation${total>1?'s':''} cette semaine</div>` + html;
+
   document.getElementById('gantt-container').innerHTML = html;
 }
 
-function showPlanningDetail(a) {
-  const dlDiff = a.deadline ? Math.ceil((new Date(a.deadline)-new Date(TODAY))/86400000) : null;
+function showPlanningDetail(dataStr) {
+  let a;
+  try { a = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr; }
+  catch(e) { toast('Erreur lecture détail', false); return; }
+  const today = localDateStr(new Date());
+  const dlDiff = a.deadline ? Math.ceil((new Date(a.deadline)-new Date(today))/86400000) : null;
   const dlText = !a.deadline ? '<span style="color:var(--text3)">Pas de deadline</span>' :
     dlDiff<0 ? `<span style="color:var(--red)">⚠ Dépassé (${a.deadline})</span>` :
-    dlDiff===0 ? `<span style="color:var(--orange)">⚡ Aujourd'hui</span>` :
+    dlDiff===0 ? `<span style="color:var(--orange)">⚡ Aujourd'hui !</span>` :
     `<span style="color:var(--green)">✓ ${a.deadline} (J-${dlDiff})</span>`;
   const stClass = a.statut==='Terminé'?'bg':a.statut==='En cours'?'bb':a.statut==='Non réalisé'?'br':'bgr';
   const bg = afColor(a);
