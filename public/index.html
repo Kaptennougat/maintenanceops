@@ -1042,6 +1042,7 @@ async function delCR(id){
 
 // ── CR PAR AFFECTATION ────────────────────────────────────────────────────────
 let myAFList = [];
+let planningAFMap = {}; // id → affectation pour le planning
 async function loadMyAFForCR(){
   try{
     const from = new Date(Date.now()-60*86400000).toISOString().slice(0,10);
@@ -1729,7 +1730,8 @@ function renderGantt(afs, techs, weekDates) {
         ${isToday?'background:rgba(61,108,255,0.04)':''}"></div>`;
     }).join('');
 
-    // Barres d'affectation
+    // Barres d'affectation (stocke les données pour le clic)
+    laned.forEach(a => { planningAFMap[a.id] = a; });
     const barHtml = laned.map(a => {
       const si = weekDates.indexOf(a._s);
       const ei = weekDates.indexOf(a._e);
@@ -1743,7 +1745,6 @@ function renderGantt(afs, techs, weekDates) {
       const label    = (a.tache||'').substring(0, 24) + (a.tache?.length > 24 ? '…' : '');
       const otLabel  = a.ot ? `<span style="opacity:.65;font-size:9px;margin-right:4px;flex-shrink:0">${a.ot}</span>` : '';
       const crMark   = a.cr_realise ? '<span style="margin-right:3px;flex-shrink:0">✓</span>' : '';
-      const safeData = JSON.stringify(a).replace(/\/g,'\\').replace(/'/g,"\'");
       return `<div
         style="position:absolute;
                left:calc(${leftPct}% + 3px);
@@ -1767,7 +1768,7 @@ function renderGantt(afs, techs, weekDates) {
                ${dlOver ? 'box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.3);' : ''}"
         onmouseover="this.style.filter='brightness(1.2)'"
         onmouseout="this.style.filter=''"
-        onclick="showPlanningDetail('${safeData}')"
+        onclick="showPlanningDetail(${a.id})"
         title="${(a.tache||'').replace(/"/g,'&quot;')}${a.deadline?' · Deadline: '+a.deadline:''}${a.statut?' · '+a.statut:''}">
         ${crMark}${otLabel}<span style="overflow:hidden;text-overflow:ellipsis">${label}</span>
       </div>`;
@@ -1793,10 +1794,9 @@ function renderGantt(afs, techs, weekDates) {
   document.getElementById('gantt-container').innerHTML = html;
 }
 
-function showPlanningDetail(dataStr) {
-  let a;
-  try { a = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr; }
-  catch(e) { toast('Erreur lecture détail', false); return; }
+function showPlanningDetail(id) {
+  const a = planningAFMap[id];
+  if(!a) { toast('Affectation introuvable', false); return; }
   const today = localDateStr(new Date());
   const dlDiff = a.deadline ? Math.ceil((new Date(a.deadline)-new Date(today))/86400000) : null;
   const dlText = !a.deadline ? '<span style="color:var(--text3)">Pas de deadline</span>' :
