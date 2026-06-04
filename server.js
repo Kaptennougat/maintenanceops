@@ -94,17 +94,17 @@ app.get('/api/comptes-rendus', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/comptes-rendus', authMiddleware, async (req, res) => {
-  const { date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire } = req.body;
+  const { date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire, pannes } = req.body;
   try {
     const r = await pool.query(`
-      INSERT INTO comptes_rendus (user_id, date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      INSERT INTO comptes_rendus (user_id, date, ot_clotures, ot_en_cours, ot_attente, realise, a_faire, besoin, blocage, commentaire, pannes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
       ON CONFLICT (user_id, date) DO UPDATE SET
         ot_clotures=$3, ot_en_cours=$4, ot_attente=$5,
-        realise=$6, a_faire=$7, besoin=$8, blocage=$9, commentaire=$10,
+        realise=$6, a_faire=$7, besoin=$8, blocage=$9, commentaire=$10, pannes=$11,
         created_at=NOW()
       RETURNING *
-    `, [req.user.id, date, ot_clotures||0, ot_en_cours||0, ot_attente||0, realise, a_faire, besoin, blocage, commentaire]);
+    `, [req.user.id, date, ot_clotures||0, ot_en_cours||0, ot_attente||0, realise, a_faire, besoin, blocage, commentaire, JSON.stringify(pannes||[])]);
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -127,8 +127,14 @@ app.get('/api/affectations', authMiddleware, async (req, res) => {
            AND ($2::date IS NULL OR a.date >= $2::date)
            AND ($3::date IS NULL OR a.date <= $3::date)
            AND ($4::text IS NULL OR a.statut = $4::text)
+           AND ($5::integer IS NULL OR a.user_id = $5::integer)
+           AND (NOT $6::boolean OR (a.deadline IS NOT NULL AND a.deadline < CURRENT_DATE AND a.statut != 'Terminé'))
            ORDER BY a.date DESC, a.priorite`;
-      params = [req.query.date||null, req.query.from||null, req.query.to||null, req.query.statut||null];
+      params = [
+        req.query.date||null, req.query.from||null, req.query.to||null, req.query.statut||null,
+        req.query.user_id ? parseInt(req.query.user_id) : null,
+        req.query.retard === 'true'
+      ];
     } else {
       q = `SELECT a.*, u.nom as tech_nom FROM affectations a
            JOIN users u ON a.user_id = u.id
@@ -170,8 +176,8 @@ app.post('/api/affectations', authMiddleware, managerOnly, async (req, res) => {
 
 app.put('/api/affectations/:id', authMiddleware, async (req, res) => {
   const allowed = req.user.role === 'responsable'
-    ? ['statut', 'priorite', 'deadline', 'note_resp', 'cr_ot']
-    : ['statut', 'cr_ot'];
+    ? ['statut', 'priorite', 'deadline', 'note_resp', 'cr_ot', 'cr_realise', 'cr_resultat', 'cr_temps', 'cr_pieces', 'cr_observations']
+    : ['statut', 'cr_ot', 'cr_realise', 'cr_resultat', 'cr_temps', 'cr_pieces', 'cr_observations'];
   const updates = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
   if (!Object.keys(updates).length) return res.json({ ok: true });
@@ -273,6 +279,25 @@ app.post('/api/equipements', authMiddleware, managerOnly, async (req, res) => {
     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
   `, [nom, atelier||null, categorie||null, marque||null, modele||null, mise_en_service||null]);
   res.json(r.rows[0]);
+});
+
+app.put('/api/equipements/:id', authMiddleware, managerOnly, async (req, res) => {
+  const { nom, atelier, categorie, marque, modele, mise_en_service } = req.body;
+  try {
+    const r = await pool.query(
+      `UPDATE equipements SET nom=$2,atelier=$3,categorie=$4,marque=$5,modele=$6,mise_en_service=$7 WHERE id=$1 RETURNING *`,
+      [req.params.id, nom, atelier||null, categorie||null, marque||null, modele||null, mise_en_service||null]
+    );
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/equipements/:id', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM procedures WHERE equipement_id=$1', [req.params.id]);
+    await pool.query('DELETE FROM equipements WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/procedures', authMiddleware, async (req, res) => {
