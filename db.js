@@ -131,6 +131,14 @@ async function initDB() {
       )
     `);
 
+    // ── MIGRATIONS (colonnes ajoutées ultérieurement) ──────────────────────────
+    await client.query(`ALTER TABLE comptes_rendus ADD COLUMN IF NOT EXISTS pannes JSONB DEFAULT '[]'::jsonb`);
+    await client.query(`ALTER TABLE affectations ADD COLUMN IF NOT EXISTS cr_realise TEXT`);
+    await client.query(`ALTER TABLE affectations ADD COLUMN IF NOT EXISTS cr_resultat TEXT`);
+    await client.query(`ALTER TABLE affectations ADD COLUMN IF NOT EXISTS cr_temps DECIMAL(10,2)`);
+    await client.query(`ALTER TABLE affectations ADD COLUMN IF NOT EXISTS cr_pieces TEXT`);
+    await client.query(`ALTER TABLE affectations ADD COLUMN IF NOT EXISTS cr_observations TEXT`);
+
     await client.query('COMMIT');
     console.log('✅ Base de données initialisée');
 
