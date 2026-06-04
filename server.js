@@ -121,7 +121,16 @@ app.get('/api/affectations', authMiddleware, async (req, res) => {
   try {
     let q, params;
     if (req.user.role === 'responsable') {
-      q = `SELECT a.*, u.nom as tech_nom, u.login as tech_login
+      if(req.query.planning === 'true' && req.query.from && req.query.to) {
+        // Mode planning : inclut les affectations qui chevauchent la semaine (date <= to ET deadline >= from)
+        q = `SELECT a.*, u.nom as tech_nom, u.login as tech_login
+             FROM affectations a JOIN users u ON a.user_id = u.id
+             WHERE a.date <= $1::date
+             AND COALESCE(a.deadline, a.date) >= $2::date
+             ORDER BY a.date, u.nom, a.priorite`;
+        params = [req.query.to, req.query.from];
+      } else {
+        q = `SELECT a.*, u.nom as tech_nom, u.login as tech_login
            FROM affectations a JOIN users u ON a.user_id = u.id
            WHERE ($1::date IS NULL OR a.date = $1::date)
            AND ($2::date IS NULL OR a.date >= $2::date)
@@ -130,18 +139,29 @@ app.get('/api/affectations', authMiddleware, async (req, res) => {
            AND ($5::integer IS NULL OR a.user_id = $5::integer)
            AND (NOT $6::boolean OR (a.deadline IS NOT NULL AND a.deadline < CURRENT_DATE AND a.statut != 'Terminé'))
            ORDER BY a.date DESC, a.priorite`;
-      params = [
-        req.query.date||null, req.query.from||null, req.query.to||null, req.query.statut||null,
-        req.query.user_id ? parseInt(req.query.user_id) : null,
-        req.query.retard === 'true'
-      ];
+        params = [
+          req.query.date||null, req.query.from||null, req.query.to||null, req.query.statut||null,
+          req.query.user_id ? parseInt(req.query.user_id) : null,
+          req.query.retard === 'true'
+        ];
+      }
     } else {
-      q = `SELECT a.*, u.nom as tech_nom FROM affectations a
+      if(req.query.planning === 'true' && req.query.from && req.query.to) {
+        q = `SELECT a.*, u.nom as tech_nom FROM affectations a
+             JOIN users u ON a.user_id = u.id
+             WHERE a.user_id = $1
+             AND a.date <= $2::date
+             AND COALESCE(a.deadline, a.date) >= $3::date
+             ORDER BY a.date`;
+        params = [req.user.id, req.query.to, req.query.from];
+      } else {
+        q = `SELECT a.*, u.nom as tech_nom FROM affectations a
            JOIN users u ON a.user_id = u.id
            WHERE a.user_id = $1
            AND ($2::date IS NULL OR a.date = $2::date)
            ORDER BY a.date DESC, a.priorite`;
-      params = [req.user.id, req.query.date||null];
+        params = [req.user.id, req.query.date||null];
+      }
     }
     const r = await pool.query(q, params);
     res.json(r.rows);
